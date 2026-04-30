@@ -1,0 +1,31 @@
+kind = "web"
+previewPath = "/"
+title = "Vet Triage"
+version = "1.0.0"
+id = "artifacts/vet-triage"
+router = "path"
+
+[[integratedSkills]]
+name = "react-vite"
+version = "1.0.0"
+
+[[services]]
+name = "web"
+paths = [ "/" ]
+localPort = 22277
+
+[services.development]
+run = "pnpm --filter @workspace/vet-triage run dev"
+
+[services.production]
+build = [ "pnpm", "--filter", "@workspace/vet-triage", "run", "build" ]
+publicDir = "artifacts/vet-triage/dist/public"
+serve = "static"
+
+[[services.production.rewrites]]
+from = "/*"
+to = "/index.html"
+
+[services.env]
+PORT = "22277"
+BASE_PATH = "/"

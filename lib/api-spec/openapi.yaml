@@ -3,13 +3,19 @@ info:
   # Do not change the title, if the title changes, the import paths will be broken
   title: Api
   version: 0.1.0
-  description: API specification
+  description: Veterinary triage tracker API
 servers:
   - url: /api
     description: Base API path
 tags:
   - name: health
     description: Health operations
+  - name: patients
+    description: Patient triage operations
+  - name: public
+    description: Public waiting-room display endpoints
+  - name: reports
+    description: Reporting and exports
 paths:
   /healthz:
     get:
@@ -24,7 +30,200 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/HealthStatus"
+
+  /patients:
+    get:
+      operationId: listPatients
+      tags: [patients]
+      summary: List active patients (staff)
+      description: Returns the list of patients currently in the waiting room (not yet seen). Requires staff authentication.
+      responses:
+        "200":
+          description: Active patient list
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Patient"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+    post:
+      operationId: createPatient
+      tags: [patients]
+      summary: Add a new patient to the queue (staff)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreatePatientInput"
+      responses:
+        "201":
+          description: Patient created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Patient"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+  /patients/{id}:
+    parameters:
+      - $ref: "#/components/parameters/PatientId"
+    patch:
+      operationId: updatePatient
+      tags: [patients]
+      summary: Update an active patient (staff)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdatePatientInput"
+      responses:
+        "200":
+          description: Updated patient
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Patient"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+    delete:
+      operationId: deletePatient
+      tags: [patients]
+      summary: Remove a patient from the active queue (staff)
+      description: Soft-removes the patient from the active queue. Removed patients are still retained for reporting and appear in the seen / removed history.
+      responses:
+        "204":
+          description: Patient removed
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /patients/{id}/mark-seen:
+    parameters:
+      - $ref: "#/components/parameters/PatientId"
+    post:
+      operationId: markPatientSeen
+      tags: [patients]
+      summary: Mark a patient as seen / consultation complete (staff)
+      description: Removes the patient from the active queue and stores them in the seen-history for reporting.
+      responses:
+        "200":
+          description: Patient marked as seen
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Patient"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /patients/{id}/restore:
+    parameters:
+      - $ref: "#/components/parameters/PatientId"
+    post:
+      operationId: restorePatient
+      tags: [patients]
+      summary: Restore a previously seen patient back to the active queue (staff)
+      responses:
+        "200":
+          description: Patient restored to active queue
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Patient"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /patients/seen:
+    get:
+      operationId: listSeenPatients
+      tags: [patients, reports]
+      summary: List seen / removed patients (staff)
+      description: Returns the historical record of patients that have been seen or removed.
+      responses:
+        "200":
+          description: Seen patient history
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Patient"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+  /triage/summary:
+    get:
+      operationId: getTriageSummary
+      tags: [patients]
+      summary: Aggregated triage stats (staff)
+      description: Returns active patient counts grouped by triage class, plus average wait time.
+      responses:
+        "200":
+          description: Triage summary
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TriageSummary"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+  /public/queue:
+    get:
+      operationId: getPublicQueue
+      tags: [public]
+      summary: Client-facing waiting list
+      description: Returns the public-safe waiting-room view (first names only and the next-to-be-seen flag). No authentication required.
+      responses:
+        "200":
+          description: Public waiting list
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PublicQueue"
+
 components:
+  parameters:
+    PatientId:
+      name: id
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+  responses:
+    Unauthorized:
+      description: Unauthorized
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
+    NotFound:
+      description: Not Found
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
+    BadRequest:
+      description: Bad Request
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
   schemas:
     HealthStatus:
       type: object
@@ -33,4 +232,223 @@ components:
           type: string
       required:
         - status
-
+    ErrorResponse:
+      type: object
+      properties:
+        error:
+          type: string
+      required:
+        - error
+    TriageClass:
+      type: string
+      enum:
+        - red
+        - orange
+        - yellow
+        - green
+        - blue
+      description: |
+        Standard veterinary triage class.
+        red = immediate / life-threatening,
+        orange = urgent (within 10-15 min),
+        yellow = semi-urgent (within 1 hour),
+        green = non-urgent,
+        blue = routine / wellness
+    Species:
+      type: string
+      description: Species of the patient (e.g. Dog, Cat, Rabbit, Bird, Reptile, Other)
+    Patient:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+        age:
+          type: string
+          description: Free-text age (e.g. "6 months", "2 years")
+        species:
+          $ref: "#/components/schemas/Species"
+        presentingProblem:
+          type: string
+        triageClass:
+          $ref: "#/components/schemas/TriageClass"
+        consultationOrder:
+          type: integer
+          nullable: true
+          minimum: 1
+          description: Position in consultation order. 1 = next to be seen.
+        caseOwner:
+          type: string
+          description: Veterinarian or staff member responsible for this case
+        arrivedAt:
+          type: string
+          format: date-time
+        seenAt:
+          type: string
+          format: date-time
+          nullable: true
+        status:
+          type: string
+          enum: [waiting, seen, removed]
+        removedAt:
+          type: string
+          format: date-time
+          nullable: true
+        notes:
+          type: string
+          nullable: true
+      required:
+        - id
+        - name
+        - age
+        - species
+        - presentingProblem
+        - triageClass
+        - consultationOrder
+        - caseOwner
+        - arrivedAt
+        - seenAt
+        - removedAt
+        - status
+        - notes
+    CreatePatientInput:
+      type: object
+      properties:
+        name:
+          type: string
+          minLength: 1
+        age:
+          type: string
+        species:
+          $ref: "#/components/schemas/Species"
+        presentingProblem:
+          type: string
+          minLength: 1
+        triageClass:
+          $ref: "#/components/schemas/TriageClass"
+        consultationOrder:
+          type: integer
+          nullable: true
+          minimum: 1
+        caseOwner:
+          type: string
+        notes:
+          type: string
+          nullable: true
+      required:
+        - name
+        - age
+        - species
+        - presentingProblem
+        - triageClass
+        - caseOwner
+    UpdatePatientInput:
+      type: object
+      properties:
+        name:
+          type: string
+          minLength: 1
+        age:
+          type: string
+        species:
+          $ref: "#/components/schemas/Species"
+        presentingProblem:
+          type: string
+          minLength: 1
+        triageClass:
+          $ref: "#/components/schemas/TriageClass"
+        consultationOrder:
+          type: integer
+          nullable: true
+          minimum: 1
+        caseOwner:
+          type: string
+        notes:
+          type: string
+          nullable: true
+    TriageSummary:
+      type: object
+      properties:
+        totalActive:
+          type: integer
+          minimum: 0
+        averageWaitMinutes:
+          type: number
+          minimum: 0
+        longestWaitMinutes:
+          type: number
+          minimum: 0
+        countsByClass:
+          type: object
+          properties:
+            red:
+              type: integer
+              minimum: 0
+            orange:
+              type: integer
+              minimum: 0
+            yellow:
+              type: integer
+              minimum: 0
+            green:
+              type: integer
+              minimum: 0
+            blue:
+              type: integer
+              minimum: 0
+          required: [red, orange, yellow, green, blue]
+        nextPatientName:
+          type: string
+          nullable: true
+          description: First name of the next patient to be seen (consultation order 1)
+      required:
+        - totalActive
+        - averageWaitMinutes
+        - longestWaitMinutes
+        - countsByClass
+        - nextPatientName
+    PublicQueueEntry:
+      type: object
+      properties:
+        position:
+          type: integer
+          minimum: 1
+          description: 1-based position in the public queue
+        firstName:
+          type: string
+        species:
+          $ref: "#/components/schemas/Species"
+        isNext:
+          type: boolean
+        waitMinutes:
+          type: integer
+          minimum: 0
+      required:
+        - position
+        - firstName
+        - species
+        - isNext
+        - waitMinutes
+    PublicQueue:
+      type: object
+      properties:
+        updatedAt:
+          type: string
+          format: date-time
+        nextPatientFirstName:
+          type: string
+          nullable: true
+        totalWaiting:
+          type: integer
+          minimum: 0
+        entries:
+          type: array
+          items:
+            $ref: "#/components/schemas/PublicQueueEntry"
+      required:
+        - updatedAt
+        - nextPatientFirstName
+        - totalWaiting
+        - entries
