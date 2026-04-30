@@ -140,24 +140,24 @@ export default function DisplayPage() {
             <motion.div
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
-              className="bg-primary text-primary-foreground rounded-[2rem] p-10 shadow-2xl flex-1 flex flex-col justify-center relative overflow-hidden"
+              className="bg-primary text-primary-foreground rounded-[2rem] p-10 shadow-2xl flex-1 flex flex-col justify-start relative overflow-hidden"
             >
               <div className="absolute top-0 right-0 p-8 opacity-10">
                 <SpeciesIcon species={nextPatient.species} className="w-48 h-48" />
               </div>
 
               <div className="relative z-10">
-                <h2 className="text-xl md:text-2xl font-semibold uppercase tracking-wider text-primary-foreground/80 mb-8">
+                <h2 className="text-xl md:text-2xl font-semibold uppercase tracking-wider text-primary-foreground/80 mb-6">
                   Next to be seen
                 </h2>
 
-                <div className="inline-flex items-center justify-center p-4 bg-white/20 rounded-2xl backdrop-blur-sm mb-8">
+                <div className="inline-flex items-center justify-center p-4 bg-white/20 rounded-2xl backdrop-blur-sm mb-6">
                   <SpeciesIcon species={nextPatient.species} className="w-12 h-12" />
                 </div>
 
                 <h3 className="text-6xl font-bold mb-4 break-words">{nextPatient.firstName}</h3>
 
-                <div className="mt-6 inline-flex items-center gap-2 bg-white/15 px-4 py-2 rounded-full backdrop-blur-sm">
+                <div className="inline-flex items-center gap-2 bg-white/15 px-4 py-2 rounded-full backdrop-blur-sm">
                   <span
                     aria-hidden
                     className={cn(
