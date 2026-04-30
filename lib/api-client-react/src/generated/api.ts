@@ -374,8 +374,8 @@ export const useUpdatePatient = <
 };
 
 /**
- * Soft-removes the patient from the active queue. Removed patients are still retained for reporting and appear in the seen / removed history.
- * @summary Remove a patient from the active queue (staff)
+ * Soft-removes the patient from the active queue when they have departed without being seen. Departed patients are still retained for reporting and appear in the seen / removed history.
+ * @summary Mark a patient as departed (staff)
  */
 export const getDeletePatientUrl = (id: string) => {
   return `/api/patients/${id}`;
@@ -438,7 +438,7 @@ export type DeletePatientMutationError = ErrorType<
 >;
 
 /**
- * @summary Remove a patient from the active queue (staff)
+ * @summary Mark a patient as departed (staff)
  */
 export const useDeletePatient = <
   TError = ErrorType<UnauthorizedResponse | NotFoundResponse>,
@@ -458,6 +458,184 @@ export const useDeletePatient = <
   TContext
 > => {
   return useMutation(getDeletePatientMutationOptions(options));
+};
+
+/**
+ * Flags the patient as actively being seen by a clinician. The patient
+stays in the active list but is excluded from the public waiting-room
+display and from the drag-to-reorder queue. Use `end-consult` to clear
+the flag, or `mark-seen` to complete the consultation.
+
+ * @summary Mark a patient as currently in consult (staff)
+ */
+export const getStartConsultUrl = (id: string) => {
+  return `/api/patients/${id}/start-consult`;
+};
+
+export const startConsult = async (
+  id: string,
+  options?: RequestInit,
+): Promise<Patient> => {
+  return customFetch<Patient>(getStartConsultUrl(id), {
+    ...options,
+    method: "POST",
+  });
+};
+
+export const getStartConsultMutationOptions = <
+  TError = ErrorType<UnauthorizedResponse | NotFoundResponse>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof startConsult>>,
+    TError,
+    { id: string },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof startConsult>>,
+  TError,
+  { id: string },
+  TContext
+> => {
+  const mutationKey = ["startConsult"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof startConsult>>,
+    { id: string }
+  > = (props) => {
+    const { id } = props ?? {};
+
+    return startConsult(id, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type StartConsultMutationResult = NonNullable<
+  Awaited<ReturnType<typeof startConsult>>
+>;
+
+export type StartConsultMutationError = ErrorType<
+  UnauthorizedResponse | NotFoundResponse
+>;
+
+/**
+ * @summary Mark a patient as currently in consult (staff)
+ */
+export const useStartConsult = <
+  TError = ErrorType<UnauthorizedResponse | NotFoundResponse>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof startConsult>>,
+    TError,
+    { id: string },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof startConsult>>,
+  TError,
+  { id: string },
+  TContext
+> => {
+  return useMutation(getStartConsultMutationOptions(options));
+};
+
+/**
+ * Returns the patient to the regular active queue without marking them as seen.
+ * @summary Clear the in-consult flag for a patient (staff)
+ */
+export const getEndConsultUrl = (id: string) => {
+  return `/api/patients/${id}/end-consult`;
+};
+
+export const endConsult = async (
+  id: string,
+  options?: RequestInit,
+): Promise<Patient> => {
+  return customFetch<Patient>(getEndConsultUrl(id), {
+    ...options,
+    method: "POST",
+  });
+};
+
+export const getEndConsultMutationOptions = <
+  TError = ErrorType<UnauthorizedResponse | NotFoundResponse>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof endConsult>>,
+    TError,
+    { id: string },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof endConsult>>,
+  TError,
+  { id: string },
+  TContext
+> => {
+  const mutationKey = ["endConsult"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof endConsult>>,
+    { id: string }
+  > = (props) => {
+    const { id } = props ?? {};
+
+    return endConsult(id, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type EndConsultMutationResult = NonNullable<
+  Awaited<ReturnType<typeof endConsult>>
+>;
+
+export type EndConsultMutationError = ErrorType<
+  UnauthorizedResponse | NotFoundResponse
+>;
+
+/**
+ * @summary Clear the in-consult flag for a patient (staff)
+ */
+export const useEndConsult = <
+  TError = ErrorType<UnauthorizedResponse | NotFoundResponse>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof endConsult>>,
+    TError,
+    { id: string },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof endConsult>>,
+  TError,
+  { id: string },
+  TContext
+> => {
+  return useMutation(getEndConsultMutationOptions(options));
 };
 
 /**
@@ -634,13 +812,14 @@ export const useRestorePatient = <
 };
 
 /**
- * Atomically rewrites the consultation order for the active queue.
+ * Atomically rewrites the consultation order for the waiting queue.
 The first ID in the array becomes consultation order 1 (next to be seen),
 the second becomes 2, etc. The submitted IDs must exactly match the set
-of currently active (not seen, not removed) patients; otherwise the
-request is rejected with `409 Conflict` so the client can refresh.
+of currently *waiting* patients (active and not in consult); patients
+currently marked as in-consult must be excluded. Mismatches are rejected
+with `409 Conflict` so the client can refresh.
 
- * @summary Reorder the active consultation queue (staff)
+ * @summary Reorder the waiting consultation queue (staff)
  */
 export const getReorderPatientsUrl = () => {
   return `/api/patients/reorder`;
@@ -710,7 +889,7 @@ export type ReorderPatientsMutationError = ErrorType<
 >;
 
 /**
- * @summary Reorder the active consultation queue (staff)
+ * @summary Reorder the waiting consultation queue (staff)
  */
 export const useReorderPatients = <
   TError = ErrorType<

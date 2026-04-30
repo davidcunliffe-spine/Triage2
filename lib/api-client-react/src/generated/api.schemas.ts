@@ -41,6 +41,7 @@ export type PatientStatus = (typeof PatientStatus)[keyof typeof PatientStatus];
 
 export const PatientStatus = {
   waiting: "waiting",
+  in_consult: "in_consult",
   seen: "seen",
   removed: "removed",
 } as const;
@@ -64,6 +65,9 @@ export interface Patient {
   seenAt: string | null;
   status: PatientStatus;
   removedAt: string | null;
+  /** True when the patient is currently being seen by a clinician but the consultation is not yet complete. */
+  inConsult: boolean;
+  consultStartedAt: string | null;
   notes: string | null;
 }
 

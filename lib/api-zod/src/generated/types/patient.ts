@@ -28,5 +28,8 @@ export interface Patient {
   seenAt: Date | null;
   status: PatientStatus;
   removedAt: Date | null;
+  /** True when the patient is currently being seen by a clinician but the consultation is not yet complete. */
+  inConsult: boolean;
+  consultStartedAt: Date | null;
   notes: string | null;
 }

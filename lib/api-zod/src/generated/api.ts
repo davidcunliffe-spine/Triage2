@@ -45,8 +45,14 @@ export const ListPatientsResponseItem = zod.object({
     .describe("Veterinarian or staff member responsible for this case"),
   arrivedAt: zod.coerce.date(),
   seenAt: zod.coerce.date().nullable(),
-  status: zod.enum(["waiting", "seen", "removed"]),
+  status: zod.enum(["waiting", "in_consult", "seen", "removed"]),
   removedAt: zod.coerce.date().nullable(),
+  inConsult: zod
+    .boolean()
+    .describe(
+      "True when the patient is currently being seen by a clinician but the consultation is not yet complete.",
+    ),
+  consultStartedAt: zod.coerce.date().nullable(),
   notes: zod.string().nullable(),
 });
 export const ListPatientsResponse = zod.array(ListPatientsResponseItem);
@@ -127,17 +133,115 @@ export const UpdatePatientResponse = zod.object({
     .describe("Veterinarian or staff member responsible for this case"),
   arrivedAt: zod.coerce.date(),
   seenAt: zod.coerce.date().nullable(),
-  status: zod.enum(["waiting", "seen", "removed"]),
+  status: zod.enum(["waiting", "in_consult", "seen", "removed"]),
   removedAt: zod.coerce.date().nullable(),
+  inConsult: zod
+    .boolean()
+    .describe(
+      "True when the patient is currently being seen by a clinician but the consultation is not yet complete.",
+    ),
+  consultStartedAt: zod.coerce.date().nullable(),
   notes: zod.string().nullable(),
 });
 
 /**
- * Soft-removes the patient from the active queue. Removed patients are still retained for reporting and appear in the seen / removed history.
- * @summary Remove a patient from the active queue (staff)
+ * Soft-removes the patient from the active queue when they have departed without being seen. Departed patients are still retained for reporting and appear in the seen / removed history.
+ * @summary Mark a patient as departed (staff)
  */
 export const DeletePatientParams = zod.object({
   id: zod.coerce.string().uuid(),
+});
+
+/**
+ * Flags the patient as actively being seen by a clinician. The patient
+stays in the active list but is excluded from the public waiting-room
+display and from the drag-to-reorder queue. Use `end-consult` to clear
+the flag, or `mark-seen` to complete the consultation.
+
+ * @summary Mark a patient as currently in consult (staff)
+ */
+export const StartConsultParams = zod.object({
+  id: zod.coerce.string().uuid(),
+});
+
+export const StartConsultResponse = zod.object({
+  id: zod.string().uuid(),
+  name: zod.string(),
+  age: zod.string().describe('Free-text age (e.g. \"6 months\", \"2 years\")'),
+  species: zod
+    .string()
+    .describe(
+      "Species of the patient (e.g. Dog, Cat, Rabbit, Bird, Reptile, Other)",
+    ),
+  presentingProblem: zod.string(),
+  triageClass: zod
+    .enum(["red", "orange", "yellow", "green", "blue"])
+    .describe(
+      "Standard veterinary triage class.\nred = immediate \/ life-threatening,\norange = urgent (within 10-15 min),\nyellow = semi-urgent (within 1 hour),\ngreen = non-urgent,\nblue = routine \/ wellness\n",
+    ),
+  consultationOrder: zod
+    .number()
+    .min(1)
+    .nullable()
+    .describe("Position in consultation order. 1 = next to be seen."),
+  caseOwner: zod
+    .string()
+    .describe("Veterinarian or staff member responsible for this case"),
+  arrivedAt: zod.coerce.date(),
+  seenAt: zod.coerce.date().nullable(),
+  status: zod.enum(["waiting", "in_consult", "seen", "removed"]),
+  removedAt: zod.coerce.date().nullable(),
+  inConsult: zod
+    .boolean()
+    .describe(
+      "True when the patient is currently being seen by a clinician but the consultation is not yet complete.",
+    ),
+  consultStartedAt: zod.coerce.date().nullable(),
+  notes: zod.string().nullable(),
+});
+
+/**
+ * Returns the patient to the regular active queue without marking them as seen.
+ * @summary Clear the in-consult flag for a patient (staff)
+ */
+export const EndConsultParams = zod.object({
+  id: zod.coerce.string().uuid(),
+});
+
+export const EndConsultResponse = zod.object({
+  id: zod.string().uuid(),
+  name: zod.string(),
+  age: zod.string().describe('Free-text age (e.g. \"6 months\", \"2 years\")'),
+  species: zod
+    .string()
+    .describe(
+      "Species of the patient (e.g. Dog, Cat, Rabbit, Bird, Reptile, Other)",
+    ),
+  presentingProblem: zod.string(),
+  triageClass: zod
+    .enum(["red", "orange", "yellow", "green", "blue"])
+    .describe(
+      "Standard veterinary triage class.\nred = immediate \/ life-threatening,\norange = urgent (within 10-15 min),\nyellow = semi-urgent (within 1 hour),\ngreen = non-urgent,\nblue = routine \/ wellness\n",
+    ),
+  consultationOrder: zod
+    .number()
+    .min(1)
+    .nullable()
+    .describe("Position in consultation order. 1 = next to be seen."),
+  caseOwner: zod
+    .string()
+    .describe("Veterinarian or staff member responsible for this case"),
+  arrivedAt: zod.coerce.date(),
+  seenAt: zod.coerce.date().nullable(),
+  status: zod.enum(["waiting", "in_consult", "seen", "removed"]),
+  removedAt: zod.coerce.date().nullable(),
+  inConsult: zod
+    .boolean()
+    .describe(
+      "True when the patient is currently being seen by a clinician but the consultation is not yet complete.",
+    ),
+  consultStartedAt: zod.coerce.date().nullable(),
+  notes: zod.string().nullable(),
 });
 
 /**
@@ -173,8 +277,14 @@ export const MarkPatientSeenResponse = zod.object({
     .describe("Veterinarian or staff member responsible for this case"),
   arrivedAt: zod.coerce.date(),
   seenAt: zod.coerce.date().nullable(),
-  status: zod.enum(["waiting", "seen", "removed"]),
+  status: zod.enum(["waiting", "in_consult", "seen", "removed"]),
   removedAt: zod.coerce.date().nullable(),
+  inConsult: zod
+    .boolean()
+    .describe(
+      "True when the patient is currently being seen by a clinician but the consultation is not yet complete.",
+    ),
+  consultStartedAt: zod.coerce.date().nullable(),
   notes: zod.string().nullable(),
 });
 
@@ -210,19 +320,26 @@ export const RestorePatientResponse = zod.object({
     .describe("Veterinarian or staff member responsible for this case"),
   arrivedAt: zod.coerce.date(),
   seenAt: zod.coerce.date().nullable(),
-  status: zod.enum(["waiting", "seen", "removed"]),
+  status: zod.enum(["waiting", "in_consult", "seen", "removed"]),
   removedAt: zod.coerce.date().nullable(),
+  inConsult: zod
+    .boolean()
+    .describe(
+      "True when the patient is currently being seen by a clinician but the consultation is not yet complete.",
+    ),
+  consultStartedAt: zod.coerce.date().nullable(),
   notes: zod.string().nullable(),
 });
 
 /**
- * Atomically rewrites the consultation order for the active queue.
+ * Atomically rewrites the consultation order for the waiting queue.
 The first ID in the array becomes consultation order 1 (next to be seen),
 the second becomes 2, etc. The submitted IDs must exactly match the set
-of currently active (not seen, not removed) patients; otherwise the
-request is rejected with `409 Conflict` so the client can refresh.
+of currently *waiting* patients (active and not in consult); patients
+currently marked as in-consult must be excluded. Mismatches are rejected
+with `409 Conflict` so the client can refresh.
 
- * @summary Reorder the active consultation queue (staff)
+ * @summary Reorder the waiting consultation queue (staff)
  */
 
 export const ReorderPatientsBody = zod.object({
@@ -259,8 +376,14 @@ export const ReorderPatientsResponseItem = zod.object({
     .describe("Veterinarian or staff member responsible for this case"),
   arrivedAt: zod.coerce.date(),
   seenAt: zod.coerce.date().nullable(),
-  status: zod.enum(["waiting", "seen", "removed"]),
+  status: zod.enum(["waiting", "in_consult", "seen", "removed"]),
   removedAt: zod.coerce.date().nullable(),
+  inConsult: zod
+    .boolean()
+    .describe(
+      "True when the patient is currently being seen by a clinician but the consultation is not yet complete.",
+    ),
+  consultStartedAt: zod.coerce.date().nullable(),
   notes: zod.string().nullable(),
 });
 export const ReorderPatientsResponse = zod.array(ReorderPatientsResponseItem);
@@ -295,8 +418,14 @@ export const ListSeenPatientsResponseItem = zod.object({
     .describe("Veterinarian or staff member responsible for this case"),
   arrivedAt: zod.coerce.date(),
   seenAt: zod.coerce.date().nullable(),
-  status: zod.enum(["waiting", "seen", "removed"]),
+  status: zod.enum(["waiting", "in_consult", "seen", "removed"]),
   removedAt: zod.coerce.date().nullable(),
+  inConsult: zod
+    .boolean()
+    .describe(
+      "True when the patient is currently being seen by a clinician but the consultation is not yet complete.",
+    ),
+  consultStartedAt: zod.coerce.date().nullable(),
   notes: zod.string().nullable(),
 });
 export const ListSeenPatientsResponse = zod.array(ListSeenPatientsResponseItem);

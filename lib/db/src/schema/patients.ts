@@ -26,6 +26,8 @@ export const patientsTable = pgTable("patients", {
   isSeen: boolean("is_seen").notNull().default(false),
   isRemoved: boolean("is_removed").notNull().default(false),
   removedAt: timestamp("removed_at", { withTimezone: true }),
+  inConsult: boolean("in_consult").notNull().default(false),
+  consultStartedAt: timestamp("consult_started_at", { withTimezone: true }),
   createdBy: text("created_by"),
   createdAt: timestamp("created_at", { withTimezone: true })
     .notNull()

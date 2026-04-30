@@ -9,6 +9,8 @@ import {
   useMarkPatientSeen,
   useDeletePatient,
   useReorderPatients,
+  useStartConsult,
+  useEndConsult,
   type Patient,
   type TriageClass,
   type CreatePatientInput,
@@ -21,9 +23,10 @@ import { TriageBadge } from "@/components/triage-badge";
 import { SpeciesIcon } from "@/components/species-icon";
 import { PatientForm } from "@/components/patient-form";
 import { toast } from "sonner";
-import { 
-  Plus, Edit2, CheckCircle2, Trash2, Clock, AlertTriangle, 
-  Activity, Users, PawPrint, MoreVertical, StickyNote, GripVertical 
+import {
+  Plus, Edit2, CheckCircle2, Clock, AlertTriangle,
+  Activity, Users, PawPrint, MoreVertical, StickyNote, GripVertical,
+  Stethoscope, LogOut, PlayCircle, PauseCircle
 } from "lucide-react";
 import {
   DndContext,
@@ -69,15 +72,20 @@ interface SortablePatientRowProps {
   patient: Patient;
   onMarkSeen: (id: string, name: string) => void;
   onEdit: (patient: Patient) => void;
-  onDelete: (id: string, name: string) => void;
+  onDeparted: (id: string, name: string) => void;
+  onStartConsult: (id: string, name: string) => void;
+  onEndConsult: (id: string, name: string) => void;
 }
 
 function SortablePatientRow({
   patient,
   onMarkSeen,
   onEdit,
-  onDelete,
+  onDeparted,
+  onStartConsult,
+  onEndConsult,
 }: SortablePatientRowProps) {
+  const inConsult = patient.inConsult === true;
   const {
     attributes,
     listeners,
@@ -85,7 +93,7 @@ function SortablePatientRow({
     transform,
     transition,
     isDragging,
-  } = useSortable({ id: patient.id });
+  } = useSortable({ id: patient.id, disabled: inConsult });
 
   const style: React.CSSProperties = {
     transform: CSS.Transform.toString(transform),
@@ -97,22 +105,39 @@ function SortablePatientRow({
     <div
       ref={setNodeRef}
       style={style}
-      className={`bg-background rounded-xl border border-border p-4 md:px-4 md:py-3 shadow-sm hover:shadow transition-shadow grid grid-cols-1 md:grid-cols-12 gap-4 items-center group relative overflow-hidden ${isDragging ? "shadow-lg ring-2 ring-primary/40" : ""}`}
+      className={`rounded-xl border p-4 md:px-4 md:py-3 shadow-sm hover:shadow transition-shadow grid grid-cols-1 md:grid-cols-12 gap-4 items-center group relative overflow-hidden ${
+        inConsult
+          ? "bg-primary/5 border-primary/30"
+          : "bg-background border-border"
+      } ${isDragging ? "shadow-lg ring-2 ring-primary/40" : ""}`}
     >
-      {patient.consultationOrder === 1 && (
+      {patient.consultationOrder === 1 && !inConsult && (
+        <div className="absolute left-0 top-0 bottom-0 w-1 bg-primary" />
+      )}
+      {inConsult && (
         <div className="absolute left-0 top-0 bottom-0 w-1 bg-primary" />
       )}
 
       <div className="col-span-1 md:col-span-3 flex items-center gap-2">
-        <button
-          type="button"
-          aria-label={`Drag to reorder ${patient.name}`}
-          className="touch-none cursor-grab active:cursor-grabbing text-muted-foreground/60 hover:text-foreground hover:bg-accent/40 rounded-md p-1 -ml-1 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40"
-          {...attributes}
-          {...listeners}
-        >
-          <GripVertical className="w-4 h-4" />
-        </button>
+        {inConsult ? (
+          <span
+            aria-label="In consult — drag disabled"
+            title="In consult — reordering disabled"
+            className="text-muted-foreground/40 p-1 -ml-1 cursor-not-allowed"
+          >
+            <GripVertical className="w-4 h-4" />
+          </span>
+        ) : (
+          <button
+            type="button"
+            aria-label={`Drag to reorder ${patient.name}`}
+            className="touch-none cursor-grab active:cursor-grabbing text-muted-foreground/60 hover:text-foreground hover:bg-accent/40 rounded-md p-1 -ml-1 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40"
+            {...attributes}
+            {...listeners}
+          >
+            <GripVertical className="w-4 h-4" />
+          </button>
+        )}
         <div className="bg-primary/5 p-2 rounded-lg text-primary shrink-0">
           <SpeciesIcon species={patient.species} className="w-5 h-5" />
         </div>
@@ -120,16 +145,22 @@ function SortablePatientRow({
           <HoverCardTrigger asChild>
             <button
               type="button"
-              className="text-left rounded-md -mx-1 px-1 hover:bg-accent/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40 transition-colors"
+              className="text-left rounded-md -mx-1 px-1 hover:bg-accent/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40 transition-colors min-w-0"
               aria-label={`View notes for ${patient.name}`}
             >
-              <div className="flex items-center gap-1.5">
+              <div className="flex items-center gap-1.5 flex-wrap">
                 <span className="font-bold text-foreground">{patient.name}</span>
                 {patient.notes && patient.notes.trim().length > 0 && (
                   <StickyNote
                     className="w-3.5 h-3.5 text-primary shrink-0"
                     aria-label="Has additional notes"
                   />
+                )}
+                {inConsult && (
+                  <span className="inline-flex items-center gap-1 rounded-full bg-primary/15 text-primary text-[11px] font-semibold uppercase tracking-wide px-2 py-0.5">
+                    <Stethoscope className="w-3 h-3" />
+                    In consult
+                  </span>
                 )}
               </div>
               <div className="text-xs text-muted-foreground">
@@ -198,12 +229,25 @@ function SortablePatientRow({
             <DropdownMenuItem onClick={() => onEdit(patient)}>
               <Edit2 className="w-4 h-4 mr-2" /> Edit
             </DropdownMenuItem>
+            {inConsult ? (
+              <DropdownMenuItem
+                onClick={() => onEndConsult(patient.id, patient.name)}
+              >
+                <PauseCircle className="w-4 h-4 mr-2" /> End consult
+              </DropdownMenuItem>
+            ) : (
+              <DropdownMenuItem
+                onClick={() => onStartConsult(patient.id, patient.name)}
+              >
+                <PlayCircle className="w-4 h-4 mr-2" /> Mark in consult
+              </DropdownMenuItem>
+            )}
             <DropdownMenuSeparator />
             <DropdownMenuItem
-              onClick={() => onDelete(patient.id, patient.name)}
+              onClick={() => onDeparted(patient.id, patient.name)}
               className="text-destructive focus:text-destructive"
             >
-              <Trash2 className="w-4 h-4 mr-2" /> Delete
+              <LogOut className="w-4 h-4 mr-2" /> Departed
             </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
@@ -292,6 +336,8 @@ export default function Dashboard() {
   const markSeenMut = useMarkPatientSeen();
   const deleteMut = useDeletePatient();
   const reorderMut = useReorderPatients();
+  const startConsultMut = useStartConsult();
+  const endConsultMut = useEndConsult();
 
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 6 } }),
@@ -354,21 +400,30 @@ export default function Dashboard() {
     // with later successful saves.
     if (reorderMut.isPending) return;
 
-    const currentIds = sortedPatients.map((p) => p.id);
-    const oldIndex = currentIds.indexOf(active.id as string);
-    const newIndex = currentIds.indexOf(over.id as string);
+    // Reorder operates on the *waiting* subset only. In-consult patients are
+    // excluded from the SortableContext, so their IDs must not appear in the
+    // submitted list — the server validates against the waiting set and would
+    // 409 otherwise.
+    const waitingIds = waitingPatients.map((p) => p.id);
+    const oldIndex = waitingIds.indexOf(active.id as string);
+    const newIndex = waitingIds.indexOf(over.id as string);
     if (oldIndex < 0 || newIndex < 0) return;
 
-    const reordered = arrayMove(sortedPatients, oldIndex, newIndex).map(
+    const reorderedWaiting = arrayMove(waitingPatients, oldIndex, newIndex).map(
       (p, i) => ({ ...p, consultationOrder: i + 1 }),
     );
 
+    // Optimistic cache must keep in-consult patients (with their null
+    // consultationOrder preserved) so the dashboard re-render matches what
+    // the server will return on success.
+    const optimistic = [...inConsultPatients, ...reorderedWaiting];
+
     await queryClient.cancelQueries({ queryKey: getListPatientsQueryKey() });
     const previous = queryClient.getQueryData(getListPatientsQueryKey());
-    queryClient.setQueryData(getListPatientsQueryKey(), reordered);
+    queryClient.setQueryData(getListPatientsQueryKey(), optimistic);
 
     reorderMut.mutate(
-      { data: { ids: reordered.map((p) => p.id) } },
+      { data: { ids: reorderedWaiting.map((p) => p.id) } },
       {
         onSuccess: () => {
           invalidateAllQueues();
@@ -394,24 +449,61 @@ export default function Dashboard() {
     );
   };
 
-  const handleDelete = (id: string, name: string) => {
-    if (!confirm(`Remove ${name} from the active queue? They will still appear in patient history for reporting.`)) return;
+  const handleDeparted = (id: string, name: string) => {
+    if (
+      !confirm(
+        `Mark ${name} as departed? They'll be removed from the active queue but still appear in patient history.`,
+      )
+    )
+      return;
     deleteMut.mutate(
       { id },
       {
         onSuccess: () => {
-          toast.success(`${name} removed from queue`);
+          toast.success(`${name} marked as departed`);
           invalidateAllQueues();
         },
-        onError: () => toast.error("Failed to remove patient")
-      }
+        onError: () => toast.error("Failed to mark patient as departed"),
+      },
     );
   };
 
-  // Sort: Consultation Order Ascending (with nulls last), then Triage Class severity
+  const handleStartConsult = (id: string, name: string) => {
+    startConsultMut.mutate(
+      { id },
+      {
+        onSuccess: () => {
+          toast.success(`${name} is now in consult`);
+          invalidateAllQueues();
+        },
+        onError: () => toast.error("Failed to start consult"),
+      },
+    );
+  };
+
+  const handleEndConsult = (id: string, name: string) => {
+    endConsultMut.mutate(
+      { id },
+      {
+        onSuccess: () => {
+          toast.success(`${name} returned to the waiting queue`);
+          invalidateAllQueues();
+        },
+        onError: () => toast.error("Failed to end consult"),
+      },
+    );
+  };
+
+  // Sort: in-consult patients first (so they remain visible at the top and
+  // are clearly separated from the waiting queue), then waiting patients by
+  // consultation order (nulls last), then triage severity, then arrival time.
   const triagePriority: Record<TriageClass, number> = { red: 1, orange: 2, yellow: 3, green: 4, blue: 5 };
-  
+
   const sortedPatients = [...patients].sort((a, b) => {
+    const aInConsult = a.inConsult === true;
+    const bInConsult = b.inConsult === true;
+    if (aInConsult !== bInConsult) return aInConsult ? -1 : 1;
+
     if (a.consultationOrder !== null && b.consultationOrder !== null) {
       if (a.consultationOrder !== b.consultationOrder) return a.consultationOrder - b.consultationOrder;
     } else if (a.consultationOrder !== null) {
@@ -419,15 +511,20 @@ export default function Dashboard() {
     } else if (b.consultationOrder !== null) {
       return 1;
     }
-    
+
     // Sort by triage urgency
     if (triagePriority[a.triageClass] !== triagePriority[b.triageClass]) {
       return triagePriority[a.triageClass] - triagePriority[b.triageClass];
     }
-    
+
     // Finally by arrival time
     return new Date(a.arrivedAt).getTime() - new Date(b.arrivedAt).getTime();
   });
+
+  // dnd-kit only sorts the waiting subset — in-consult patients have their
+  // drag handle disabled and are rendered above the sortable area.
+  const waitingPatients = sortedPatients.filter((p) => p.inConsult !== true);
+  const inConsultPatients = sortedPatients.filter((p) => p.inConsult === true);
 
   return (
     <Layout>
@@ -494,8 +591,24 @@ export default function Dashboard() {
                 </div>
 
                 <p className="hidden md:block text-xs text-muted-foreground px-4 -mt-1">
-                  Drag the handle on the left of any row to change the consultation order.
+                  Drag the handle on the left of any waiting row to change the consultation order. Patients in consult cannot be reordered.
                 </p>
+
+                {inConsultPatients.length > 0 && (
+                  <div className="space-y-3">
+                    {inConsultPatients.map((patient) => (
+                      <SortablePatientRow
+                        key={patient.id}
+                        patient={patient}
+                        onMarkSeen={handleMarkSeen}
+                        onEdit={(p) => setEditingPatient(p)}
+                        onDeparted={handleDeparted}
+                        onStartConsult={handleStartConsult}
+                        onEndConsult={handleEndConsult}
+                      />
+                    ))}
+                  </div>
+                )}
 
                 <DndContext
                   sensors={sensors}
@@ -503,17 +616,19 @@ export default function Dashboard() {
                   onDragEnd={handleDragEnd}
                 >
                   <SortableContext
-                    items={sortedPatients.map((p) => p.id)}
+                    items={waitingPatients.map((p) => p.id)}
                     strategy={verticalListSortingStrategy}
                   >
                     <div className="space-y-3">
-                      {sortedPatients.map((patient) => (
+                      {waitingPatients.map((patient) => (
                         <SortablePatientRow
                           key={patient.id}
                           patient={patient}
                           onMarkSeen={handleMarkSeen}
                           onEdit={(p) => setEditingPatient(p)}
-                          onDelete={handleDelete}
+                          onDeparted={handleDeparted}
+                          onStartConsult={handleStartConsult}
+                          onEndConsult={handleEndConsult}
                         />
                       ))}
                     </div>

@@ -10,6 +10,7 @@ export type PatientStatus = (typeof PatientStatus)[keyof typeof PatientStatus];
 
 export const PatientStatus = {
   waiting: "waiting",
+  in_consult: "in_consult",
   seen: "seen",
   removed: "removed",
 } as const;

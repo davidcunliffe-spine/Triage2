@@ -99,11 +99,55 @@ paths:
     delete:
       operationId: deletePatient
       tags: [patients]
-      summary: Remove a patient from the active queue (staff)
-      description: Soft-removes the patient from the active queue. Removed patients are still retained for reporting and appear in the seen / removed history.
+      summary: Mark a patient as departed (staff)
+      description: Soft-removes the patient from the active queue when they have departed without being seen. Departed patients are still retained for reporting and appear in the seen / removed history.
       responses:
         "204":
-          description: Patient removed
+          description: Patient marked as departed
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /patients/{id}/start-consult:
+    parameters:
+      - $ref: "#/components/parameters/PatientId"
+    post:
+      operationId: startConsult
+      tags: [patients]
+      summary: Mark a patient as currently in consult (staff)
+      description: |
+        Flags the patient as actively being seen by a clinician. The patient
+        stays in the active list but is excluded from the public waiting-room
+        display and from the drag-to-reorder queue. Use `end-consult` to clear
+        the flag, or `mark-seen` to complete the consultation.
+      responses:
+        "200":
+          description: Patient is now in consult
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Patient"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /patients/{id}/end-consult:
+    parameters:
+      - $ref: "#/components/parameters/PatientId"
+    post:
+      operationId: endConsult
+      tags: [patients]
+      summary: Clear the in-consult flag for a patient (staff)
+      description: Returns the patient to the regular active queue without marking them as seen.
+      responses:
+        "200":
+          description: Patient returned to the active queue
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Patient"
         "401":
           $ref: "#/components/responses/Unauthorized"
         "404":
@@ -152,13 +196,14 @@ paths:
     post:
       operationId: reorderPatients
       tags: [patients]
-      summary: Reorder the active consultation queue (staff)
+      summary: Reorder the waiting consultation queue (staff)
       description: |
-        Atomically rewrites the consultation order for the active queue.
+        Atomically rewrites the consultation order for the waiting queue.
         The first ID in the array becomes consultation order 1 (next to be seen),
         the second becomes 2, etc. The submitted IDs must exactly match the set
-        of currently active (not seen, not removed) patients; otherwise the
-        request is rejected with `409 Conflict` so the client can refresh.
+        of currently *waiting* patients (active and not in consult); patients
+        currently marked as in-consult must be excluded. Mismatches are rejected
+        with `409 Conflict` so the client can refresh.
       requestBody:
         required: true
         content:
@@ -336,8 +381,15 @@ components:
           nullable: true
         status:
           type: string
-          enum: [waiting, seen, removed]
+          enum: [waiting, in_consult, seen, removed]
         removedAt:
+          type: string
+          format: date-time
+          nullable: true
+        inConsult:
+          type: boolean
+          description: True when the patient is currently being seen by a clinician but the consultation is not yet complete.
+        consultStartedAt:
           type: string
           format: date-time
           nullable: true
@@ -357,6 +409,8 @@ components:
         - seenAt
         - removedAt
         - status
+        - inConsult
+        - consultStartedAt
         - notes
     CreatePatientInput:
       type: object
