@@ -1,6 +1,8 @@
 import { SignIn, SignUp } from "@clerk/react";
 import { useEffect } from "react";
 import { CareLogo } from "@/components/care-logo";
+import { ALLOWED_STAFF_EMAIL_DOMAIN } from "@/components/staff-guard";
+import { Info } from "lucide-react";
 
 const basePath = import.meta.env.BASE_URL.replace(/\/$/, "");
 
@@ -39,6 +41,15 @@ export function SignUpPage() {
 
   return (
     <AuthShell>
+      <div className="w-[440px] max-w-full bg-accent/40 border border-accent rounded-2xl px-4 py-3 flex items-start gap-3 text-sm text-foreground">
+        <Info className="w-4 h-4 mt-0.5 shrink-0 text-primary" />
+        <p>
+          Staff accounts must be created with your{" "}
+          <span className="font-semibold">@{ALLOWED_STAFF_EMAIL_DOMAIN}</span>{" "}
+          email address. Other addresses will not be granted access to the
+          triage board.
+        </p>
+      </div>
       <SignUp routing="path" path={`${basePath}/sign-up`} signInUrl={`${basePath}/sign-in`} />
     </AuthShell>
   );

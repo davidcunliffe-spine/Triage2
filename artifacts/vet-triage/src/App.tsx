@@ -14,6 +14,7 @@ import Dashboard from "@/pages/staff/dashboard";
 import HistoryPage from "@/pages/staff/history";
 import DisplayPage from "@/pages/display";
 import NotFound from "@/pages/not-found";
+import { StaffGuard } from "@/components/staff-guard";
 
 const queryClient = new QueryClient();
 
@@ -101,7 +102,9 @@ function ProtectedRoute({ component: Component }: { component: React.ComponentTy
   return (
     <>
       <Show when="signed-in">
-        <Component />
+        <StaffGuard>
+          <Component />
+        </StaffGuard>
       </Show>
       <Show when="signed-out">
         <Redirect to="/" />
