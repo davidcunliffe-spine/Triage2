@@ -531,6 +531,8 @@ components:
           type: string
         species:
           $ref: "#/components/schemas/Species"
+        triageClass:
+          $ref: "#/components/schemas/TriageClass"
         isNext:
           type: boolean
         waitMinutes:
@@ -540,6 +542,7 @@ components:
         - position
         - firstName
         - species
+        - triageClass
         - isNext
         - waitMinutes
     PublicQueue:
@@ -554,6 +557,10 @@ components:
         totalWaiting:
           type: integer
           minimum: 0
+        averageWaitMinutes:
+          type: integer
+          minimum: 0
+          description: Average wait time across waiting patients, in whole minutes.
         entries:
           type: array
           items:
@@ -562,4 +569,5 @@ components:
         - updatedAt
         - nextPatientFirstName
         - totalWaiting
+        - averageWaitMinutes
         - entries

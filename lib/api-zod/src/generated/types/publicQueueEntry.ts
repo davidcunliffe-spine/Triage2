@@ -6,6 +6,7 @@
  * OpenAPI spec version: 0.1.0
  */
 import type { Species } from "./species";
+import type { TriageClass } from "./triageClass";
 
 export interface PublicQueueEntry {
   /**
@@ -15,6 +16,7 @@ export interface PublicQueueEntry {
   position: number;
   firstName: string;
   species: Species;
+  triageClass: TriageClass;
   isNext: boolean;
   /** @minimum 0 */
   waitMinutes: number;

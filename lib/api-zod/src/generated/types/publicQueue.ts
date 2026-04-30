@@ -12,5 +12,10 @@ export interface PublicQueue {
   nextPatientFirstName: string | null;
   /** @minimum 0 */
   totalWaiting: number;
+  /**
+   * Average wait time across waiting patients, in whole minutes.
+   * @minimum 0
+   */
+  averageWaitMinutes: number;
   entries: PublicQueueEntry[];
 }

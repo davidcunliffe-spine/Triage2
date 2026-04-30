@@ -668,15 +668,21 @@ router.get("/public/queue", async (_req, res): Promise<void> => {
   // Do NOT fall back to the first row, that would mislead pet owners.
   const next = ordered.find((r) => r.consultationOrder === 1) ?? null;
 
+  const totalWait = ordered.reduce((acc, r) => acc + minutesSince(r.arrivedAt), 0);
+  const averageWait =
+    ordered.length === 0 ? 0 : Math.round(totalWait / ordered.length);
+
   res.json(
     GetPublicQueueResponse.parse({
       updatedAt: new Date(),
       nextPatientFirstName: next ? firstName(next.name) : null,
       totalWaiting: ordered.length,
+      averageWaitMinutes: averageWait,
       entries: ordered.map((r, idx) => ({
         position: idx + 1,
         firstName: firstName(r.name),
         species: r.species,
+        triageClass: r.triageClass,
         isNext: next ? r.id === next.id : false,
         waitMinutes: minutesSince(r.arrivedAt),
       })),

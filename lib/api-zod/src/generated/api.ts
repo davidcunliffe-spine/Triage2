@@ -479,12 +479,18 @@ export const GetTriageSummaryResponse = zod.object({
  */
 export const getPublicQueueResponseTotalWaitingMin = 0;
 
+export const getPublicQueueResponseAverageWaitMinutesMin = 0;
+
 export const getPublicQueueResponseEntriesItemWaitMinutesMin = 0;
 
 export const GetPublicQueueResponse = zod.object({
   updatedAt: zod.coerce.date(),
   nextPatientFirstName: zod.string().nullable(),
   totalWaiting: zod.number().min(getPublicQueueResponseTotalWaitingMin),
+  averageWaitMinutes: zod
+    .number()
+    .min(getPublicQueueResponseAverageWaitMinutesMin)
+    .describe("Average wait time across waiting patients, in whole minutes."),
   entries: zod.array(
     zod.object({
       position: zod
@@ -496,6 +502,11 @@ export const GetPublicQueueResponse = zod.object({
         .string()
         .describe(
           "Species of the patient (e.g. Dog, Cat, Rabbit, Bird, Reptile, Other)",
+        ),
+      triageClass: zod
+        .enum(["red", "orange", "yellow", "green", "blue"])
+        .describe(
+          "Standard veterinary triage class.\nred = immediate \/ life-threatening,\norange = urgent (within 10-15 min),\nyellow = semi-urgent (within 1 hour),\ngreen = non-urgent,\nblue = routine \/ wellness\n",
         ),
       isNext: zod.boolean(),
       waitMinutes: zod
