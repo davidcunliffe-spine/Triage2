@@ -81,6 +81,14 @@ export interface CreatePatientInput {
   notes?: string | null;
 }
 
+export interface ReorderPatientsInput {
+  /**
+   * Active patient IDs in their new consultation order. First ID becomes order 1.
+   * @minItems 1
+   */
+  ids: string[];
+}
+
 export interface UpdatePatientInput {
   /** @minLength 1 */
   name?: string;
@@ -155,3 +163,8 @@ export type NotFoundResponse = ErrorResponse;
  * Bad Request
  */
 export type BadRequestResponse = ErrorResponse;
+
+/**
+ * Forbidden
+ */
+export type ForbiddenResponse = ErrorResponse;

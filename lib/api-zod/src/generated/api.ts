@@ -216,6 +216,56 @@ export const RestorePatientResponse = zod.object({
 });
 
 /**
+ * Atomically rewrites the consultation order for the active queue.
+The first ID in the array becomes consultation order 1 (next to be seen),
+the second becomes 2, etc. The submitted IDs must exactly match the set
+of currently active (not seen, not removed) patients; otherwise the
+request is rejected with `409 Conflict` so the client can refresh.
+
+ * @summary Reorder the active consultation queue (staff)
+ */
+
+export const ReorderPatientsBody = zod.object({
+  ids: zod
+    .array(zod.string().uuid())
+    .min(1)
+    .describe(
+      "Active patient IDs in their new consultation order. First ID becomes order 1.",
+    ),
+});
+
+export const ReorderPatientsResponseItem = zod.object({
+  id: zod.string().uuid(),
+  name: zod.string(),
+  age: zod.string().describe('Free-text age (e.g. \"6 months\", \"2 years\")'),
+  species: zod
+    .string()
+    .describe(
+      "Species of the patient (e.g. Dog, Cat, Rabbit, Bird, Reptile, Other)",
+    ),
+  presentingProblem: zod.string(),
+  triageClass: zod
+    .enum(["red", "orange", "yellow", "green", "blue"])
+    .describe(
+      "Standard veterinary triage class.\nred = immediate \/ life-threatening,\norange = urgent (within 10-15 min),\nyellow = semi-urgent (within 1 hour),\ngreen = non-urgent,\nblue = routine \/ wellness\n",
+    ),
+  consultationOrder: zod
+    .number()
+    .min(1)
+    .nullable()
+    .describe("Position in consultation order. 1 = next to be seen."),
+  caseOwner: zod
+    .string()
+    .describe("Veterinarian or staff member responsible for this case"),
+  arrivedAt: zod.coerce.date(),
+  seenAt: zod.coerce.date().nullable(),
+  status: zod.enum(["waiting", "seen", "removed"]),
+  removedAt: zod.coerce.date().nullable(),
+  notes: zod.string().nullable(),
+});
+export const ReorderPatientsResponse = zod.array(ReorderPatientsResponseItem);
+
+/**
  * Returns the historical record of patients that have been seen or removed.
  * @summary List seen / removed patients (staff)
  */

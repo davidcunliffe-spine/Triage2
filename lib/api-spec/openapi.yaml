@@ -148,6 +148,45 @@ paths:
         "404":
           $ref: "#/components/responses/NotFound"
 
+  /patients/reorder:
+    post:
+      operationId: reorderPatients
+      tags: [patients]
+      summary: Reorder the active consultation queue (staff)
+      description: |
+        Atomically rewrites the consultation order for the active queue.
+        The first ID in the array becomes consultation order 1 (next to be seen),
+        the second becomes 2, etc. The submitted IDs must exactly match the set
+        of currently active (not seen, not removed) patients; otherwise the
+        request is rejected with `409 Conflict` so the client can refresh.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ReorderPatientsInput"
+      responses:
+        "200":
+          description: Reordered active patient list
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Patient"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "409":
+          description: The active queue has changed since the page was loaded
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
   /patients/seen:
     get:
       operationId: listSeenPatients
@@ -220,6 +259,12 @@ components:
             $ref: "#/components/schemas/ErrorResponse"
     BadRequest:
       description: Bad Request
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
+    Forbidden:
+      description: Forbidden
       content:
         application/json:
           schema:
@@ -344,6 +389,18 @@ components:
         - presentingProblem
         - triageClass
         - caseOwner
+    ReorderPatientsInput:
+      type: object
+      properties:
+        ids:
+          type: array
+          minItems: 1
+          items:
+            type: string
+            format: uuid
+          description: Active patient IDs in their new consultation order. First ID becomes order 1.
+      required:
+        - ids
     UpdatePatientInput:
       type: object
       properties:

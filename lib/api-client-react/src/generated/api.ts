@@ -19,10 +19,13 @@ import type {
 import type {
   BadRequestResponse,
   CreatePatientInput,
+  ErrorResponse,
+  ForbiddenResponse,
   HealthStatus,
   NotFoundResponse,
   Patient,
   PublicQueue,
+  ReorderPatientsInput,
   TriageSummary,
   UnauthorizedResponse,
   UpdatePatientInput,
@@ -628,6 +631,110 @@ export const useRestorePatient = <
   TContext
 > => {
   return useMutation(getRestorePatientMutationOptions(options));
+};
+
+/**
+ * Atomically rewrites the consultation order for the active queue.
+The first ID in the array becomes consultation order 1 (next to be seen),
+the second becomes 2, etc. The submitted IDs must exactly match the set
+of currently active (not seen, not removed) patients; otherwise the
+request is rejected with `409 Conflict` so the client can refresh.
+
+ * @summary Reorder the active consultation queue (staff)
+ */
+export const getReorderPatientsUrl = () => {
+  return `/api/patients/reorder`;
+};
+
+export const reorderPatients = async (
+  reorderPatientsInput: ReorderPatientsInput,
+  options?: RequestInit,
+): Promise<Patient[]> => {
+  return customFetch<Patient[]>(getReorderPatientsUrl(), {
+    ...options,
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(reorderPatientsInput),
+  });
+};
+
+export const getReorderPatientsMutationOptions = <
+  TError = ErrorType<
+    | BadRequestResponse
+    | UnauthorizedResponse
+    | ForbiddenResponse
+    | ErrorResponse
+  >,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof reorderPatients>>,
+    TError,
+    { data: BodyType<ReorderPatientsInput> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof reorderPatients>>,
+  TError,
+  { data: BodyType<ReorderPatientsInput> },
+  TContext
+> => {
+  const mutationKey = ["reorderPatients"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof reorderPatients>>,
+    { data: BodyType<ReorderPatientsInput> }
+  > = (props) => {
+    const { data } = props ?? {};
+
+    return reorderPatients(data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type ReorderPatientsMutationResult = NonNullable<
+  Awaited<ReturnType<typeof reorderPatients>>
+>;
+export type ReorderPatientsMutationBody = BodyType<ReorderPatientsInput>;
+export type ReorderPatientsMutationError = ErrorType<
+  BadRequestResponse | UnauthorizedResponse | ForbiddenResponse | ErrorResponse
+>;
+
+/**
+ * @summary Reorder the active consultation queue (staff)
+ */
+export const useReorderPatients = <
+  TError = ErrorType<
+    | BadRequestResponse
+    | UnauthorizedResponse
+    | ForbiddenResponse
+    | ErrorResponse
+  >,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof reorderPatients>>,
+    TError,
+    { data: BodyType<ReorderPatientsInput> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof reorderPatients>>,
+  TError,
+  { data: BodyType<ReorderPatientsInput> },
+  TContext
+> => {
+  return useMutation(getReorderPatientsMutationOptions(options));
 };
 
 /**

@@ -8,6 +8,7 @@ import {
   useUpdatePatient,
   useMarkPatientSeen,
   useDeletePatient,
+  useReorderPatients,
   type Patient,
   type TriageClass,
   type CreatePatientInput,
@@ -19,12 +20,28 @@ import { WaitTime } from "@/components/wait-time";
 import { TriageBadge } from "@/components/triage-badge";
 import { SpeciesIcon } from "@/components/species-icon";
 import { PatientForm } from "@/components/patient-form";
-import { motion, AnimatePresence } from "framer-motion";
 import { toast } from "sonner";
 import { 
   Plus, Edit2, CheckCircle2, Trash2, Clock, AlertTriangle, 
-  Activity, Users, PawPrint, MoreVertical, StickyNote 
+  Activity, Users, PawPrint, MoreVertical, StickyNote, GripVertical 
 } from "lucide-react";
+import {
+  DndContext,
+  PointerSensor,
+  KeyboardSensor,
+  useSensor,
+  useSensors,
+  closestCenter,
+  type DragEndEvent,
+} from "@dnd-kit/core";
+import {
+  SortableContext,
+  sortableKeyboardCoordinates,
+  useSortable,
+  verticalListSortingStrategy,
+  arrayMove,
+} from "@dnd-kit/sortable";
+import { CSS } from "@dnd-kit/utilities";
 import {
   HoverCard,
   HoverCardContent,
@@ -47,6 +64,153 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Skeleton } from "@/components/ui/skeleton";
+
+interface SortablePatientRowProps {
+  patient: Patient;
+  onMarkSeen: (id: string, name: string) => void;
+  onEdit: (patient: Patient) => void;
+  onDelete: (id: string, name: string) => void;
+}
+
+function SortablePatientRow({
+  patient,
+  onMarkSeen,
+  onEdit,
+  onDelete,
+}: SortablePatientRowProps) {
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    transform,
+    transition,
+    isDragging,
+  } = useSortable({ id: patient.id });
+
+  const style: React.CSSProperties = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    zIndex: isDragging ? 30 : undefined,
+  };
+
+  return (
+    <div
+      ref={setNodeRef}
+      style={style}
+      className={`bg-background rounded-xl border border-border p-4 md:px-4 md:py-3 shadow-sm hover:shadow transition-shadow grid grid-cols-1 md:grid-cols-12 gap-4 items-center group relative overflow-hidden ${isDragging ? "shadow-lg ring-2 ring-primary/40" : ""}`}
+    >
+      {patient.consultationOrder === 1 && (
+        <div className="absolute left-0 top-0 bottom-0 w-1 bg-primary" />
+      )}
+
+      <div className="col-span-1 md:col-span-3 flex items-center gap-2">
+        <button
+          type="button"
+          aria-label={`Drag to reorder ${patient.name}`}
+          className="touch-none cursor-grab active:cursor-grabbing text-muted-foreground/60 hover:text-foreground hover:bg-accent/40 rounded-md p-1 -ml-1 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40"
+          {...attributes}
+          {...listeners}
+        >
+          <GripVertical className="w-4 h-4" />
+        </button>
+        <div className="bg-primary/5 p-2 rounded-lg text-primary shrink-0">
+          <SpeciesIcon species={patient.species} className="w-5 h-5" />
+        </div>
+        <HoverCard openDelay={120} closeDelay={80}>
+          <HoverCardTrigger asChild>
+            <button
+              type="button"
+              className="text-left rounded-md -mx-1 px-1 hover:bg-accent/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40 transition-colors"
+              aria-label={`View notes for ${patient.name}`}
+            >
+              <div className="flex items-center gap-1.5">
+                <span className="font-bold text-foreground">{patient.name}</span>
+                {patient.notes && patient.notes.trim().length > 0 && (
+                  <StickyNote
+                    className="w-3.5 h-3.5 text-primary shrink-0"
+                    aria-label="Has additional notes"
+                  />
+                )}
+              </div>
+              <div className="text-xs text-muted-foreground">
+                {patient.species}, {patient.age}
+              </div>
+            </button>
+          </HoverCardTrigger>
+          <HoverCardContent side="right" align="start" className="w-80">
+            <div className="space-y-2">
+              <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                <StickyNote className="w-3.5 h-3.5 text-primary" />
+                Additional notes
+              </div>
+              {patient.notes && patient.notes.trim().length > 0 ? (
+                <p className="text-sm text-foreground whitespace-pre-wrap leading-relaxed">
+                  {patient.notes}
+                </p>
+              ) : (
+                <p className="text-sm text-muted-foreground italic">
+                  No additional notes recorded.
+                </p>
+              )}
+            </div>
+          </HoverCardContent>
+        </HoverCard>
+      </div>
+
+      <div className="col-span-1 md:col-span-2">
+        <TriageBadge triageClass={patient.triageClass} />
+      </div>
+
+      <div
+        className="col-span-1 md:col-span-3 text-sm truncate text-foreground pr-2"
+        title={patient.presentingProblem}
+      >
+        {patient.presentingProblem}
+      </div>
+
+      <div className="col-span-1 md:col-span-2 text-sm text-muted-foreground">
+        {patient.caseOwner}
+      </div>
+
+      <div className="col-span-1 text-right font-medium flex items-center md:justify-end gap-2 text-foreground">
+        <Clock className="w-4 h-4 text-muted-foreground md:hidden" />
+        <WaitTime arrivedAt={patient.arrivedAt} format="long" />
+      </div>
+
+      <div className="col-span-1 flex justify-end gap-2">
+        <Button
+          size="icon"
+          variant="ghost"
+          className="text-green-600 hover:text-green-700 hover:bg-green-50"
+          onClick={() => onMarkSeen(patient.id, patient.name)}
+          title="Mark as seen"
+        >
+          <CheckCircle2 className="w-5 h-5" />
+        </Button>
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button size="icon" variant="ghost">
+              <MoreVertical className="w-4 h-4" />
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end">
+            <DropdownMenuLabel>Actions</DropdownMenuLabel>
+            <DropdownMenuItem onClick={() => onEdit(patient)}>
+              <Edit2 className="w-4 h-4 mr-2" /> Edit
+            </DropdownMenuItem>
+            <DropdownMenuSeparator />
+            <DropdownMenuItem
+              onClick={() => onDelete(patient.id, patient.name)}
+              className="text-destructive focus:text-destructive"
+            >
+              <Trash2 className="w-4 h-4 mr-2" /> Delete
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
+      </div>
+    </div>
+  );
+}
 
 function SummaryStats() {
   const { data: summary, isLoading } = useGetTriageSummary({
@@ -127,6 +291,12 @@ export default function Dashboard() {
   const updateMut = useUpdatePatient();
   const markSeenMut = useMarkPatientSeen();
   const deleteMut = useDeletePatient();
+  const reorderMut = useReorderPatients();
+
+  const sensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 6 } }),
+    useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }),
+  );
 
   const invalidateAllQueues = () => {
     queryClient.invalidateQueries({ queryKey: getListPatientsQueryKey() });
@@ -174,6 +344,53 @@ export default function Dashboard() {
         },
         onError: () => toast.error("Failed to mark as seen")
       }
+    );
+  };
+
+  const handleDragEnd = async (event: DragEndEvent) => {
+    const { active, over } = event;
+    if (!over || active.id === over.id) return;
+    // Ignore overlapping reorders to avoid stale-snapshot rollbacks racing
+    // with later successful saves.
+    if (reorderMut.isPending) return;
+
+    const currentIds = sortedPatients.map((p) => p.id);
+    const oldIndex = currentIds.indexOf(active.id as string);
+    const newIndex = currentIds.indexOf(over.id as string);
+    if (oldIndex < 0 || newIndex < 0) return;
+
+    const reordered = arrayMove(sortedPatients, oldIndex, newIndex).map(
+      (p, i) => ({ ...p, consultationOrder: i + 1 }),
+    );
+
+    await queryClient.cancelQueries({ queryKey: getListPatientsQueryKey() });
+    const previous = queryClient.getQueryData(getListPatientsQueryKey());
+    queryClient.setQueryData(getListPatientsQueryKey(), reordered);
+
+    reorderMut.mutate(
+      { data: { ids: reordered.map((p) => p.id) } },
+      {
+        onSuccess: () => {
+          invalidateAllQueues();
+        },
+        onError: (err: unknown) => {
+          if (previous !== undefined) {
+            queryClient.setQueryData(getListPatientsQueryKey(), previous);
+          }
+          const status =
+            typeof err === "object" && err !== null && "response" in err
+              ? (err as { response?: { status?: number } }).response?.status
+              : undefined;
+          if (status === 409) {
+            toast.error(
+              "Queue changed while you were dragging — refreshed to the latest.",
+            );
+          } else {
+            toast.error("Couldn't save the new order — reverted.");
+          }
+          invalidateAllQueues();
+        },
+      },
     );
   };
 
@@ -276,119 +493,33 @@ export default function Dashboard() {
                   <div className="col-span-1"></div>
                 </div>
 
-                <AnimatePresence>
-                  {sortedPatients.map((patient) => (
-                    <motion.div
-                      key={patient.id}
-                      layout
-                      initial={{ opacity: 0, y: 10 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      exit={{ opacity: 0, scale: 0.95 }}
-                      className="bg-background rounded-xl border border-border p-4 md:px-4 md:py-3 shadow-sm hover:shadow transition-shadow grid grid-cols-1 md:grid-cols-12 gap-4 items-center group relative overflow-hidden"
-                    >
-                      {/* Sub-bg indicating order if next */}
-                      {patient.consultationOrder === 1 && (
-                        <div className="absolute left-0 top-0 bottom-0 w-1 bg-primary" />
-                      )}
+                <p className="hidden md:block text-xs text-muted-foreground px-4 -mt-1">
+                  Drag the handle on the left of any row to change the consultation order.
+                </p>
 
-                      <div className="col-span-1 md:col-span-3 flex items-center gap-3">
-                        <div className="bg-primary/5 p-2 rounded-lg text-primary shrink-0">
-                          <SpeciesIcon species={patient.species} className="w-5 h-5" />
-                        </div>
-                        <HoverCard openDelay={120} closeDelay={80}>
-                          <HoverCardTrigger asChild>
-                            <button
-                              type="button"
-                              className="text-left rounded-md -mx-1 px-1 hover:bg-accent/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40 transition-colors"
-                              aria-label={`View notes for ${patient.name}`}
-                            >
-                              <div className="flex items-center gap-1.5">
-                                <span className="font-bold text-foreground">{patient.name}</span>
-                                {patient.notes && patient.notes.trim().length > 0 && (
-                                  <StickyNote
-                                    className="w-3.5 h-3.5 text-primary shrink-0"
-                                    aria-label="Has additional notes"
-                                  />
-                                )}
-                              </div>
-                              <div className="text-xs text-muted-foreground">{patient.species}, {patient.age}</div>
-                            </button>
-                          </HoverCardTrigger>
-                          <HoverCardContent
-                            side="right"
-                            align="start"
-                            className="w-80"
-                          >
-                            <div className="space-y-2">
-                              <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-                                <StickyNote className="w-3.5 h-3.5 text-primary" />
-                                Additional notes
-                              </div>
-                              {patient.notes && patient.notes.trim().length > 0 ? (
-                                <p className="text-sm text-foreground whitespace-pre-wrap leading-relaxed">
-                                  {patient.notes}
-                                </p>
-                              ) : (
-                                <p className="text-sm text-muted-foreground italic">
-                                  No additional notes recorded.
-                                </p>
-                              )}
-                            </div>
-                          </HoverCardContent>
-                        </HoverCard>
-                      </div>
+                <DndContext
+                  sensors={sensors}
+                  collisionDetection={closestCenter}
+                  onDragEnd={handleDragEnd}
+                >
+                  <SortableContext
+                    items={sortedPatients.map((p) => p.id)}
+                    strategy={verticalListSortingStrategy}
+                  >
+                    <div className="space-y-3">
+                      {sortedPatients.map((patient) => (
+                        <SortablePatientRow
+                          key={patient.id}
+                          patient={patient}
+                          onMarkSeen={handleMarkSeen}
+                          onEdit={(p) => setEditingPatient(p)}
+                          onDelete={handleDelete}
+                        />
+                      ))}
+                    </div>
+                  </SortableContext>
+                </DndContext>
 
-                      <div className="col-span-1 md:col-span-2">
-                        <TriageBadge triageClass={patient.triageClass} />
-                      </div>
-
-                      <div className="col-span-1 md:col-span-3 text-sm truncate text-foreground pr-2" title={patient.presentingProblem}>
-                        {patient.presentingProblem}
-                      </div>
-
-                      <div className="col-span-1 md:col-span-2 text-sm text-muted-foreground">
-                        {patient.caseOwner}
-                      </div>
-
-                      <div className="col-span-1 text-right font-medium flex items-center md:justify-end gap-2 text-foreground">
-                        <Clock className="w-4 h-4 text-muted-foreground md:hidden" />
-                        <WaitTime arrivedAt={patient.arrivedAt} format="long" />
-                      </div>
-
-                      <div className="col-span-1 flex justify-end gap-2">
-                        <Button 
-                          size="icon" 
-                          variant="ghost" 
-                          className="text-green-600 hover:text-green-700 hover:bg-green-50"
-                          onClick={() => handleMarkSeen(patient.id, patient.name)}
-                          title="Mark as seen"
-                        >
-                          <CheckCircle2 className="w-5 h-5" />
-                        </Button>
-                        <DropdownMenu>
-                          <DropdownMenuTrigger asChild>
-                            <Button size="icon" variant="ghost">
-                              <MoreVertical className="w-4 h-4" />
-                            </Button>
-                          </DropdownMenuTrigger>
-                          <DropdownMenuContent align="end">
-                            <DropdownMenuLabel>Actions</DropdownMenuLabel>
-                            <DropdownMenuItem onClick={() => setEditingPatient(patient)}>
-                              <Edit2 className="w-4 h-4 mr-2" /> Edit
-                            </DropdownMenuItem>
-                            <DropdownMenuSeparator />
-                            <DropdownMenuItem 
-                              onClick={() => handleDelete(patient.id, patient.name)}
-                              className="text-destructive focus:text-destructive"
-                            >
-                              <Trash2 className="w-4 h-4 mr-2" /> Delete
-                            </DropdownMenuItem>
-                          </DropdownMenuContent>
-                        </DropdownMenu>
-                      </div>
-                    </motion.div>
-                  ))}
-                </AnimatePresence>
               </div>
             )}
           </div>

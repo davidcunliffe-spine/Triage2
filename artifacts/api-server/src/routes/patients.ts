@@ -4,7 +4,7 @@ import {
   type Request,
   type Response,
 } from "express";
-import { and, asc, desc, eq, or } from "drizzle-orm";
+import { and, asc, desc, eq, inArray, or } from "drizzle-orm";
 import { db, patientsTable, type Patient } from "@workspace/db";
 import {
   CreatePatientBody,
@@ -13,10 +13,12 @@ import {
   DeletePatientParams,
   MarkPatientSeenParams,
   RestorePatientParams,
+  ReorderPatientsBody,
   ListPatientsResponse,
   UpdatePatientResponse,
   MarkPatientSeenResponse,
   RestorePatientResponse,
+  ReorderPatientsResponse,
   ListSeenPatientsResponse,
   GetTriageSummaryResponse,
   GetPublicQueueResponse,
@@ -73,6 +75,13 @@ const activeFilter = and(
   eq(patientsTable.isSeen, false),
   eq(patientsTable.isRemoved, false),
 );
+
+class ReorderConflictError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = "ReorderConflictError";
+  }
+}
 
 router.get(
   "/patients",
@@ -203,6 +212,104 @@ router.delete(
       return;
     }
     res.sendStatus(204);
+  },
+);
+
+router.post(
+  "/patients/reorder",
+  requireAuth,
+  async (req: Request, res: Response): Promise<void> => {
+    const parsed = ReorderPatientsBody.safeParse(req.body);
+    if (!parsed.success) {
+      res.status(400).json({ error: parsed.error.message });
+      return;
+    }
+    const { ids } = parsed.data;
+
+    if (new Set(ids).size !== ids.length) {
+      res.status(400).json({ error: "Duplicate patient ids in reorder list" });
+      return;
+    }
+
+    try {
+      // SERIALIZABLE isolation gives us predicate locks on the active set, so
+      // PostgreSQL will abort with a serialization failure if a concurrent
+      // create / restore / mark-seen / delete changes the active queue while
+      // we're reordering. We translate that into a 409 the client can handle.
+      const ordered = await db.transaction(
+        async (tx) => {
+          const activeRows = await tx
+            .select()
+            .from(patientsTable)
+            .where(activeFilter);
+
+          const activeIds = new Set(activeRows.map((p) => p.id));
+          const submittedIds = new Set(ids);
+
+          if (
+            submittedIds.size !== activeIds.size ||
+            ![...submittedIds].every((id) => activeIds.has(id))
+          ) {
+            throw new ReorderConflictError(
+              "Active queue changed since the page was loaded. Please refresh and try again.",
+            );
+          }
+
+          for (let i = 0; i < ids.length; i++) {
+            await tx
+              .update(patientsTable)
+              .set({ consultationOrder: i + 1 })
+              .where(
+                and(eq(patientsTable.id, ids[i]!), activeFilter),
+              );
+          }
+
+          const rows = await tx
+            .select()
+            .from(patientsTable)
+            .where(activeFilter);
+
+          return [...rows].sort((a, b) => {
+            const ao = a.consultationOrder ?? Number.POSITIVE_INFINITY;
+            const bo = b.consultationOrder ?? Number.POSITIVE_INFINITY;
+            if (ao !== bo) return ao - bo;
+            const ar = TRIAGE_RANK[a.triageClass as TriageClass] ?? 99;
+            const br = TRIAGE_RANK[b.triageClass as TriageClass] ?? 99;
+            if (ar !== br) return ar - br;
+            return a.arrivedAt.getTime() - b.arrivedAt.getTime();
+          });
+        },
+        { isolationLevel: "serializable" },
+      );
+
+      res.json(ReorderPatientsResponse.parse(ordered.map(toApiPatient)));
+    } catch (err) {
+      if (err instanceof ReorderConflictError) {
+        res.status(409).json({ error: err.message });
+        return;
+      }
+      // PostgreSQL serialization failure (40001) — concurrent change to the
+      // active queue. Surface as a conflict so the client can refresh.
+      const pickCode = (e: unknown): string | undefined =>
+        typeof e === "object" && e !== null && "code" in e
+          ? (e as { code?: string }).code
+          : undefined;
+      const sqlState =
+        pickCode(err) ??
+        pickCode(
+          typeof err === "object" && err !== null && "cause" in err
+            ? (err as { cause?: unknown }).cause
+            : undefined,
+        );
+      if (sqlState === "40001") {
+        res.status(409).json({
+          error:
+            "Active queue changed while reordering. Please refresh and try again.",
+        });
+        return;
+      }
+      throw err;
+    }
   },
 );
 
