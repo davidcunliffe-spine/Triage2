@@ -136,8 +136,6 @@ export default function DisplayPage() {
       <div className="flex-1 grid grid-cols-1 lg:grid-cols-12 gap-10">
         {/* Next up Hero */}
         <div className="lg:col-span-4 flex flex-col">
-          <h2 className="text-2xl font-semibold text-muted-foreground mb-6 uppercase tracking-wider">Next to be seen</h2>
-
           {nextPatient ? (
             <motion.div
               initial={{ opacity: 0, y: 20 }}
@@ -149,6 +147,10 @@ export default function DisplayPage() {
               </div>
 
               <div className="relative z-10">
+                <h2 className="text-xl md:text-2xl font-semibold uppercase tracking-wider text-primary-foreground/80 mb-8">
+                  Next to be seen
+                </h2>
+
                 <div className="inline-flex items-center justify-center p-4 bg-white/20 rounded-2xl backdrop-blur-sm mb-8">
                   <SpeciesIcon species={nextPatient.species} className="w-12 h-12" />
                 </div>
@@ -171,6 +173,9 @@ export default function DisplayPage() {
             </motion.div>
           ) : (
             <div className="bg-card border-2 border-dashed border-border rounded-[2rem] p-10 flex-1 flex flex-col items-center justify-center text-center">
+              <h2 className="text-xl md:text-2xl font-semibold uppercase tracking-wider text-muted-foreground mb-6">
+                Next to be seen
+              </h2>
               <div className="bg-muted p-6 rounded-full mb-6">
                 <PawPrint className="w-12 h-12 text-muted-foreground/50" />
               </div>
