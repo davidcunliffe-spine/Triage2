@@ -44,14 +44,14 @@ const clerkAppearance = {
     logoImageUrl: `${window.location.origin}${basePath}/brand/care-logo.png`,
   },
   variables: {
-    colorPrimary: "hsl(152, 62%, 44%)", // CARE green #2AB573 (carevet.com.au)
-    colorForeground: "hsl(220, 12%, 14%)",
-    colorMutedForeground: "hsl(220, 8%, 42%)",
-    colorDanger: "hsl(0, 65%, 52%)",
+    colorPrimary: "hsl(152, 62%, 44%)", // Kelly Green #2AB573
+    colorForeground: "hsl(270, 2%, 20%)", // Charcoal #333234
+    colorMutedForeground: "hsl(270, 2%, 42%)",
+    colorDanger: "hsl(15, 88%, 55%)", // Tangerine #F25928
     colorBackground: "hsl(0, 0%, 100%)",
-    colorInput: "hsl(220, 10%, 95%)",
-    colorInputForeground: "hsl(220, 12%, 14%)",
-    colorNeutral: "hsl(220, 10%, 90%)",
+    colorInput: "hsl(270, 4%, 96%)",
+    colorInputForeground: "hsl(270, 2%, 20%)",
+    colorNeutral: "hsl(270, 5%, 90%)",
     fontFamily: "Outfit, sans-serif",
     borderRadius: "0.75rem",
   },
