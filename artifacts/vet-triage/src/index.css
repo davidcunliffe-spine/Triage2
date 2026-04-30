@@ -84,9 +84,9 @@
   --popover-foreground: 220 12% 14%;
   --popover-border: 220 10% 90%;
 
-  /* CARE Brand Green (vibrant lime) */
-  --primary: 134 80% 52%;
-  --primary-foreground: 220 12% 14%;
+  /* CARE Brand Green (carevet.com.au #2AB573) */
+  --primary: 152 62% 44%;
+  --primary-foreground: 0 0% 100%;
 
   /* Charcoal as a calm neutral secondary */
   --secondary: 220 8% 94%;

@@ -44,7 +44,7 @@ const clerkAppearance = {
     logoImageUrl: `${window.location.origin}${basePath}/brand/care-logo.png`,
   },
   variables: {
-    colorPrimary: "hsl(134, 80%, 38%)", // CARE green (darker for AA contrast on white)
+    colorPrimary: "hsl(152, 62%, 44%)", // CARE green #2AB573 (carevet.com.au)
     colorForeground: "hsl(220, 12%, 14%)",
     colorMutedForeground: "hsl(220, 8%, 42%)",
     colorDanger: "hsl(0, 65%, 52%)",
