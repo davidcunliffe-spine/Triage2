@@ -23,8 +23,13 @@ import { motion, AnimatePresence } from "framer-motion";
 import { toast } from "sonner";
 import { 
   Plus, Edit2, CheckCircle2, Trash2, Clock, AlertTriangle, 
-  Activity, Users, PawPrint, MoreVertical 
+  Activity, Users, PawPrint, MoreVertical, StickyNote 
 } from "lucide-react";
+import {
+  HoverCard,
+  HoverCardContent,
+  HoverCardTrigger,
+} from "@/components/ui/hover-card";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -290,10 +295,47 @@ export default function Dashboard() {
                         <div className="bg-primary/5 p-2 rounded-lg text-primary shrink-0">
                           <SpeciesIcon species={patient.species} className="w-5 h-5" />
                         </div>
-                        <div>
-                          <div className="font-bold text-foreground">{patient.name}</div>
-                          <div className="text-xs text-muted-foreground">{patient.species}, {patient.age}</div>
-                        </div>
+                        <HoverCard openDelay={120} closeDelay={80}>
+                          <HoverCardTrigger asChild>
+                            <button
+                              type="button"
+                              className="text-left rounded-md -mx-1 px-1 hover:bg-accent/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40 transition-colors"
+                              aria-label={`View notes for ${patient.name}`}
+                            >
+                              <div className="flex items-center gap-1.5">
+                                <span className="font-bold text-foreground">{patient.name}</span>
+                                {patient.notes && patient.notes.trim().length > 0 && (
+                                  <StickyNote
+                                    className="w-3.5 h-3.5 text-primary shrink-0"
+                                    aria-label="Has additional notes"
+                                  />
+                                )}
+                              </div>
+                              <div className="text-xs text-muted-foreground">{patient.species}, {patient.age}</div>
+                            </button>
+                          </HoverCardTrigger>
+                          <HoverCardContent
+                            side="right"
+                            align="start"
+                            className="w-80"
+                          >
+                            <div className="space-y-2">
+                              <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                                <StickyNote className="w-3.5 h-3.5 text-primary" />
+                                Additional notes
+                              </div>
+                              {patient.notes && patient.notes.trim().length > 0 ? (
+                                <p className="text-sm text-foreground whitespace-pre-wrap leading-relaxed">
+                                  {patient.notes}
+                                </p>
+                              ) : (
+                                <p className="text-sm text-muted-foreground italic">
+                                  No additional notes recorded.
+                                </p>
+                              )}
+                            </div>
+                          </HoverCardContent>
+                        </HoverCard>
                       </div>
 
                       <div className="col-span-1 md:col-span-2">
