@@ -11,11 +11,13 @@ import {
   useReorderPatients,
   useStartConsult,
   useEndConsult,
+  ApiError,
   type Patient,
   type TriageClass,
   type CreatePatientInput,
   type UpdatePatientInput
 } from "@workspace/api-client-react";
+import { useClerk } from "@clerk/react";
 import { useQueryClient } from "@tanstack/react-query";
 import { Layout } from "@/components/layout";
 import { WaitTime } from "@/components/wait-time";
@@ -321,15 +323,25 @@ export default function Dashboard() {
   }, []);
 
   const queryClient = useQueryClient();
+  const { signOut } = useClerk();
   const [isAddOpen, setIsAddOpen] = useState(false);
   const [editingPatient, setEditingPatient] = useState<Patient | null>(null);
 
-  const { data: patients = [], isLoading, isError, refetch } = useListPatients({
+  const { data: patients = [], isLoading, isError, error, refetch } = useListPatients({
     query: {
       queryKey: getListPatientsQueryKey(),
       refetchInterval: 3000,
+      retry: (failureCount, err) => {
+        if (err instanceof ApiError && (err.status === 401 || err.status === 403)) {
+          return false;
+        }
+        return failureCount < 3;
+      },
     }
   });
+
+  const isAuthError =
+    !!error && error instanceof ApiError && (error.status === 401 || error.status === 403);
 
   const createMut = useCreatePatient();
   const updateMut = useUpdatePatient();
@@ -563,9 +575,31 @@ export default function Dashboard() {
                 {[1,2,3].map(i => <Skeleton key={i} className="h-20 w-full rounded-xl" />)}
               </div>
             ) : isError ? (
-              <div className="text-center py-12">
-                <p className="text-destructive mb-4">Error loading patients</p>
-                <Button onClick={() => refetch()} variant="outline">Retry</Button>
+              <div className="text-center py-12 max-w-md mx-auto">
+                {isAuthError ? (
+                  <>
+                    <p className="text-foreground font-semibold mb-2">
+                      Your session has ended
+                    </p>
+                    <p className="text-muted-foreground mb-6 text-sm">
+                      Please sign in again to access the triage queue.
+                    </p>
+                    <Button
+                      onClick={async () => {
+                        await signOut();
+                        window.location.href = `${import.meta.env.BASE_URL}sign-in`;
+                      }}
+                      className="rounded-full"
+                    >
+                      Sign in again
+                    </Button>
+                  </>
+                ) : (
+                  <>
+                    <p className="text-destructive mb-4">Error loading patients</p>
+                    <Button onClick={() => refetch()} variant="outline">Retry</Button>
+                  </>
+                )}
               </div>
             ) : sortedPatients.length === 0 ? (
               <div className="text-center py-20">
