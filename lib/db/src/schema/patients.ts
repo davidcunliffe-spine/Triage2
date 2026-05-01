@@ -15,9 +15,9 @@ export const patientsTable = pgTable("patients", {
   age: text("age").notNull(),
   species: text("species").notNull(),
   presentingProblem: text("presenting_problem").notNull(),
-  triageClass: text("triage_class").notNull(),
+  triageClass: text("triage_class"),
   consultationOrder: integer("consultation_order"),
-  caseOwner: text("case_owner").notNull(),
+  caseOwner: text("case_owner"),
   notes: text("notes"),
   arrivedAt: timestamp("arrived_at", { withTimezone: true })
     .notNull()

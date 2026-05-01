@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import {
   useListSeenPatients, getListSeenPatientsQueryKey,
   useRestorePatient,
@@ -11,10 +11,12 @@ import { Layout } from "@/components/layout";
 import { TriageBadge } from "@/components/triage-badge";
 import { SpeciesIcon } from "@/components/species-icon";
 import { toast } from "sonner";
-import { History, Download, RotateCcw, FileText, PawPrint } from "lucide-react";
+import { History, Download, RotateCcw, FileText, CalendarDays, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { Skeleton } from "@/components/ui/skeleton";
-import { differenceInMinutes, format } from "date-fns";
+import { differenceInMinutes, format, startOfDay, endOfDay, parseISO, isWithinInterval } from "date-fns";
 
 export default function HistoryPage() {
   useEffect(() => {
@@ -27,6 +29,28 @@ export default function HistoryPage() {
       queryKey: getListSeenPatientsQueryKey()
     }
   });
+
+  const [dateFrom, setDateFrom] = useState("");
+  const [dateTo, setDateTo] = useState("");
+
+  const filteredPatients = seenPatients.filter((p) => {
+    const ref = p.seenAt ?? p.arrivedAt;
+    const refDate = new Date(ref);
+    if (dateFrom) {
+      if (refDate < startOfDay(parseISO(dateFrom))) return false;
+    }
+    if (dateTo) {
+      if (refDate > endOfDay(parseISO(dateTo))) return false;
+    }
+    return true;
+  });
+
+  const hasFilter = dateFrom || dateTo;
+
+  const clearFilter = () => {
+    setDateFrom("");
+    setDateTo("");
+  };
 
   const restoreMut = useRestorePatient();
 
@@ -47,22 +71,22 @@ export default function HistoryPage() {
   };
 
   const handleDownloadCSV = () => {
-    if (seenPatients.length === 0) {
+    if (filteredPatients.length === 0) {
       toast.error("No data to download");
       return;
     }
 
     const headers = ["Patient Name", "Age", "Species", "Presenting Problem", "Triage Class", "Case Owner", "Arrived At", "Seen At", "Wait Time (mins)"];
     
-    const rows = seenPatients.map(p => {
+    const rows = filteredPatients.map(p => {
       const waitTime = p.seenAt ? differenceInMinutes(new Date(p.seenAt), new Date(p.arrivedAt)) : 0;
       return [
         `"${p.name.replace(/"/g, '""')}"`,
         `"${p.age.replace(/"/g, '""')}"`,
         `"${p.species}"`,
         `"${p.presentingProblem.replace(/"/g, '""')}"`,
-        `"${p.triageClass}"`,
-        `"${p.caseOwner.replace(/"/g, '""')}"`,
+        `"${p.triageClass ?? ''}"`,
+        `"${(p.caseOwner ?? '').replace(/"/g, '""')}"`,
         `"${new Date(p.arrivedAt).toISOString()}"`,
         `"${p.seenAt ? new Date(p.seenAt).toISOString() : ''}"`,
         waitTime
@@ -97,11 +121,55 @@ export default function HistoryPage() {
             variant="outline" 
             className="rounded-xl bg-white" 
             onClick={handleDownloadCSV}
-            disabled={seenPatients.length === 0}
+            disabled={filteredPatients.length === 0}
           >
             <Download className="mr-2 h-4 w-4" />
             Download CSV
           </Button>
+        </div>
+
+        {/* Date range filter */}
+        <div className="bg-card border border-border/50 rounded-2xl px-6 py-4 mb-6 shadow-sm">
+          <div className="flex flex-wrap items-end gap-4">
+            <CalendarDays className="w-5 h-5 text-muted-foreground mb-2 shrink-0" />
+            <div className="flex flex-col gap-1">
+              <Label htmlFor="date-from" className="text-xs text-muted-foreground">From</Label>
+              <Input
+                id="date-from"
+                type="date"
+                value={dateFrom}
+                onChange={(e) => setDateFrom(e.target.value)}
+                max={dateTo || undefined}
+                className="w-44 rounded-xl"
+              />
+            </div>
+            <div className="flex flex-col gap-1">
+              <Label htmlFor="date-to" className="text-xs text-muted-foreground">To</Label>
+              <Input
+                id="date-to"
+                type="date"
+                value={dateTo}
+                onChange={(e) => setDateTo(e.target.value)}
+                min={dateFrom || undefined}
+                className="w-44 rounded-xl"
+              />
+            </div>
+            {hasFilter && (
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={clearFilter}
+                className="mb-0.5 text-muted-foreground hover:text-foreground"
+              >
+                <X className="w-4 h-4 mr-1" /> Clear
+              </Button>
+            )}
+            {hasFilter && !isLoading && (
+              <span className="text-sm text-muted-foreground mb-0.5">
+                {filteredPatients.length} of {seenPatients.length} records
+              </span>
+            )}
+          </div>
         </div>
 
         <div className="bg-card rounded-[2rem] border border-border/50 shadow-sm overflow-hidden">
@@ -114,13 +182,17 @@ export default function HistoryPage() {
               <div className="text-center py-12 text-destructive">
                 Error loading history
               </div>
-            ) : seenPatients.length === 0 ? (
+            ) : filteredPatients.length === 0 ? (
               <div className="text-center py-20">
                 <div className="bg-muted w-20 h-20 rounded-full flex items-center justify-center mx-auto mb-6">
                   <FileText className="w-10 h-10 text-muted-foreground/50" />
                 </div>
-                <h3 className="text-xl font-semibold text-foreground mb-2">No history yet</h3>
-                <p className="text-muted-foreground">Seen patients will appear here.</p>
+                <h3 className="text-xl font-semibold text-foreground mb-2">
+                  {hasFilter ? "No records in this date range" : "No history yet"}
+                </h3>
+                <p className="text-muted-foreground">
+                  {hasFilter ? "Try adjusting the date filter." : "Seen patients will appear here."}
+                </p>
               </div>
             ) : (
               <div className="space-y-3">
@@ -132,7 +204,7 @@ export default function HistoryPage() {
                   <div className="col-span-2 text-right">Actions</div>
                 </div>
 
-                {seenPatients.map((patient) => {
+                {filteredPatients.map((patient) => {
                   const waitMins = patient.seenAt ? differenceInMinutes(new Date(patient.seenAt), new Date(patient.arrivedAt)) : 0;
                   
                   return (
@@ -151,7 +223,11 @@ export default function HistoryPage() {
                       </div>
 
                       <div className="col-span-1 md:col-span-2">
-                        <TriageBadge triageClass={patient.triageClass} />
+                        {patient.triageClass ? (
+                          <TriageBadge triageClass={patient.triageClass} />
+                        ) : (
+                          <span className="text-xs text-muted-foreground">—</span>
+                        )}
                       </div>
 
                       <div className="col-span-1 md:col-span-3 text-sm">
@@ -160,7 +236,7 @@ export default function HistoryPage() {
                       </div>
 
                       <div className="col-span-1 md:col-span-2 text-sm text-muted-foreground">
-                        {patient.caseOwner}
+                        {patient.caseOwner || <span className="text-xs">—</span>}
                       </div>
 
                       <div className="col-span-1 md:col-span-2 flex justify-end">

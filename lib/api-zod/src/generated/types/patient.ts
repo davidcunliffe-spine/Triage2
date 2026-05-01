@@ -16,14 +16,14 @@ export interface Patient {
   age: string;
   species: Species;
   presentingProblem: string;
-  triageClass: TriageClass;
+  triageClass?: TriageClass | null;
   /**
    * Position in consultation order. 1 = next to be seen.
    * @minimum 1
    */
   consultationOrder: number | null;
   /** Veterinarian or staff member responsible for this case */
-  caseOwner: string;
+  caseOwner?: string | null;
   arrivedAt: Date;
   seenAt: Date | null;
   status: PatientStatus;

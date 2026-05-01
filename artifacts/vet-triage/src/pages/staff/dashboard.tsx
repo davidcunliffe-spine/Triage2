@@ -524,9 +524,11 @@ export default function Dashboard() {
       return 1;
     }
 
-    // Sort by triage urgency
-    if (triagePriority[a.triageClass] !== triagePriority[b.triageClass]) {
-      return triagePriority[a.triageClass] - triagePriority[b.triageClass];
+    // Sort by triage urgency (null triageClass sorts last)
+    const aPriority = a.triageClass ? (triagePriority[a.triageClass] ?? 99) : 99;
+    const bPriority = b.triageClass ? (triagePriority[b.triageClass] ?? 99) : 99;
+    if (aPriority !== bPriority) {
+      return aPriority - bPriority;
     }
 
     // Finally by arrival time

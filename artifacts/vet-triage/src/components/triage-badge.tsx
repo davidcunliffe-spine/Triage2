@@ -3,7 +3,7 @@ import { cn } from "@/lib/utils";
 import type { TriageClass } from "@workspace/api-client-react";
 
 interface TriageBadgeProps {
-  triageClass: TriageClass;
+  triageClass: TriageClass | null | undefined;
   className?: string;
   showDot?: boolean;
 }
@@ -47,10 +47,10 @@ const triageStyles: Record<TriageClass, { bg: string, text: string, border: stri
 };
 
 export function TriageBadge({ triageClass, className, showDot = true }: TriageBadgeProps) {
-  const styles = triageStyles[triageClass];
+  const styles = triageClass ? triageStyles[triageClass] : undefined;
   
   if (!styles) {
-    return <Badge variant="outline">{triageClass}</Badge>;
+    return <Badge variant="outline">{triageClass ?? "Unknown"}</Badge>;
   }
 
   return (

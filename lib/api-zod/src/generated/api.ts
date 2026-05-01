@@ -31,10 +31,15 @@ export const ListPatientsResponseItem = zod.object({
     ),
   presentingProblem: zod.string(),
   triageClass: zod
-    .enum(["red", "orange", "yellow", "green", "blue"])
-    .describe(
-      "Standard veterinary triage class.\nred = immediate \/ life-threatening,\norange = urgent (within 10-15 min),\nyellow = semi-urgent (within 1 hour),\ngreen = non-urgent,\nblue = routine \/ wellness\n",
-    ),
+    .union([
+      zod
+        .enum(["red", "orange", "yellow", "green", "blue"])
+        .describe(
+          "Standard veterinary triage class.\nred = immediate \/ life-threatening,\norange = urgent (within 10-15 min),\nyellow = semi-urgent (within 1 hour),\ngreen = non-urgent,\nblue = routine \/ wellness\n",
+        ),
+      zod.null(),
+    ])
+    .optional(),
   consultationOrder: zod
     .number()
     .min(1)
@@ -42,6 +47,7 @@ export const ListPatientsResponseItem = zod.object({
     .describe("Position in consultation order. 1 = next to be seen."),
   caseOwner: zod
     .string()
+    .nullish()
     .describe("Veterinarian or staff member responsible for this case"),
   arrivedAt: zod.coerce.date(),
   seenAt: zod.coerce.date().nullable(),
@@ -72,11 +78,12 @@ export const CreatePatientBody = zod.object({
   presentingProblem: zod.string().min(1),
   triageClass: zod
     .enum(["red", "orange", "yellow", "green", "blue"])
+    .optional()
     .describe(
       "Standard veterinary triage class.\nred = immediate \/ life-threatening,\norange = urgent (within 10-15 min),\nyellow = semi-urgent (within 1 hour),\ngreen = non-urgent,\nblue = routine \/ wellness\n",
     ),
   consultationOrder: zod.number().min(1).nullish(),
-  caseOwner: zod.string(),
+  caseOwner: zod.string().optional(),
   notes: zod.string().nullish(),
 });
 
@@ -119,10 +126,15 @@ export const UpdatePatientResponse = zod.object({
     ),
   presentingProblem: zod.string(),
   triageClass: zod
-    .enum(["red", "orange", "yellow", "green", "blue"])
-    .describe(
-      "Standard veterinary triage class.\nred = immediate \/ life-threatening,\norange = urgent (within 10-15 min),\nyellow = semi-urgent (within 1 hour),\ngreen = non-urgent,\nblue = routine \/ wellness\n",
-    ),
+    .union([
+      zod
+        .enum(["red", "orange", "yellow", "green", "blue"])
+        .describe(
+          "Standard veterinary triage class.\nred = immediate \/ life-threatening,\norange = urgent (within 10-15 min),\nyellow = semi-urgent (within 1 hour),\ngreen = non-urgent,\nblue = routine \/ wellness\n",
+        ),
+      zod.null(),
+    ])
+    .optional(),
   consultationOrder: zod
     .number()
     .min(1)
@@ -130,6 +142,7 @@ export const UpdatePatientResponse = zod.object({
     .describe("Position in consultation order. 1 = next to be seen."),
   caseOwner: zod
     .string()
+    .nullish()
     .describe("Veterinarian or staff member responsible for this case"),
   arrivedAt: zod.coerce.date(),
   seenAt: zod.coerce.date().nullable(),
@@ -175,10 +188,15 @@ export const StartConsultResponse = zod.object({
     ),
   presentingProblem: zod.string(),
   triageClass: zod
-    .enum(["red", "orange", "yellow", "green", "blue"])
-    .describe(
-      "Standard veterinary triage class.\nred = immediate \/ life-threatening,\norange = urgent (within 10-15 min),\nyellow = semi-urgent (within 1 hour),\ngreen = non-urgent,\nblue = routine \/ wellness\n",
-    ),
+    .union([
+      zod
+        .enum(["red", "orange", "yellow", "green", "blue"])
+        .describe(
+          "Standard veterinary triage class.\nred = immediate \/ life-threatening,\norange = urgent (within 10-15 min),\nyellow = semi-urgent (within 1 hour),\ngreen = non-urgent,\nblue = routine \/ wellness\n",
+        ),
+      zod.null(),
+    ])
+    .optional(),
   consultationOrder: zod
     .number()
     .min(1)
@@ -186,6 +204,7 @@ export const StartConsultResponse = zod.object({
     .describe("Position in consultation order. 1 = next to be seen."),
   caseOwner: zod
     .string()
+    .nullish()
     .describe("Veterinarian or staff member responsible for this case"),
   arrivedAt: zod.coerce.date(),
   seenAt: zod.coerce.date().nullable(),
@@ -219,10 +238,15 @@ export const EndConsultResponse = zod.object({
     ),
   presentingProblem: zod.string(),
   triageClass: zod
-    .enum(["red", "orange", "yellow", "green", "blue"])
-    .describe(
-      "Standard veterinary triage class.\nred = immediate \/ life-threatening,\norange = urgent (within 10-15 min),\nyellow = semi-urgent (within 1 hour),\ngreen = non-urgent,\nblue = routine \/ wellness\n",
-    ),
+    .union([
+      zod
+        .enum(["red", "orange", "yellow", "green", "blue"])
+        .describe(
+          "Standard veterinary triage class.\nred = immediate \/ life-threatening,\norange = urgent (within 10-15 min),\nyellow = semi-urgent (within 1 hour),\ngreen = non-urgent,\nblue = routine \/ wellness\n",
+        ),
+      zod.null(),
+    ])
+    .optional(),
   consultationOrder: zod
     .number()
     .min(1)
@@ -230,6 +254,7 @@ export const EndConsultResponse = zod.object({
     .describe("Position in consultation order. 1 = next to be seen."),
   caseOwner: zod
     .string()
+    .nullish()
     .describe("Veterinarian or staff member responsible for this case"),
   arrivedAt: zod.coerce.date(),
   seenAt: zod.coerce.date().nullable(),
@@ -263,10 +288,15 @@ export const MarkPatientSeenResponse = zod.object({
     ),
   presentingProblem: zod.string(),
   triageClass: zod
-    .enum(["red", "orange", "yellow", "green", "blue"])
-    .describe(
-      "Standard veterinary triage class.\nred = immediate \/ life-threatening,\norange = urgent (within 10-15 min),\nyellow = semi-urgent (within 1 hour),\ngreen = non-urgent,\nblue = routine \/ wellness\n",
-    ),
+    .union([
+      zod
+        .enum(["red", "orange", "yellow", "green", "blue"])
+        .describe(
+          "Standard veterinary triage class.\nred = immediate \/ life-threatening,\norange = urgent (within 10-15 min),\nyellow = semi-urgent (within 1 hour),\ngreen = non-urgent,\nblue = routine \/ wellness\n",
+        ),
+      zod.null(),
+    ])
+    .optional(),
   consultationOrder: zod
     .number()
     .min(1)
@@ -274,6 +304,7 @@ export const MarkPatientSeenResponse = zod.object({
     .describe("Position in consultation order. 1 = next to be seen."),
   caseOwner: zod
     .string()
+    .nullish()
     .describe("Veterinarian or staff member responsible for this case"),
   arrivedAt: zod.coerce.date(),
   seenAt: zod.coerce.date().nullable(),
@@ -306,10 +337,15 @@ export const RestorePatientResponse = zod.object({
     ),
   presentingProblem: zod.string(),
   triageClass: zod
-    .enum(["red", "orange", "yellow", "green", "blue"])
-    .describe(
-      "Standard veterinary triage class.\nred = immediate \/ life-threatening,\norange = urgent (within 10-15 min),\nyellow = semi-urgent (within 1 hour),\ngreen = non-urgent,\nblue = routine \/ wellness\n",
-    ),
+    .union([
+      zod
+        .enum(["red", "orange", "yellow", "green", "blue"])
+        .describe(
+          "Standard veterinary triage class.\nred = immediate \/ life-threatening,\norange = urgent (within 10-15 min),\nyellow = semi-urgent (within 1 hour),\ngreen = non-urgent,\nblue = routine \/ wellness\n",
+        ),
+      zod.null(),
+    ])
+    .optional(),
   consultationOrder: zod
     .number()
     .min(1)
@@ -317,6 +353,7 @@ export const RestorePatientResponse = zod.object({
     .describe("Position in consultation order. 1 = next to be seen."),
   caseOwner: zod
     .string()
+    .nullish()
     .describe("Veterinarian or staff member responsible for this case"),
   arrivedAt: zod.coerce.date(),
   seenAt: zod.coerce.date().nullable(),
@@ -362,10 +399,15 @@ export const ReorderPatientsResponseItem = zod.object({
     ),
   presentingProblem: zod.string(),
   triageClass: zod
-    .enum(["red", "orange", "yellow", "green", "blue"])
-    .describe(
-      "Standard veterinary triage class.\nred = immediate \/ life-threatening,\norange = urgent (within 10-15 min),\nyellow = semi-urgent (within 1 hour),\ngreen = non-urgent,\nblue = routine \/ wellness\n",
-    ),
+    .union([
+      zod
+        .enum(["red", "orange", "yellow", "green", "blue"])
+        .describe(
+          "Standard veterinary triage class.\nred = immediate \/ life-threatening,\norange = urgent (within 10-15 min),\nyellow = semi-urgent (within 1 hour),\ngreen = non-urgent,\nblue = routine \/ wellness\n",
+        ),
+      zod.null(),
+    ])
+    .optional(),
   consultationOrder: zod
     .number()
     .min(1)
@@ -373,6 +415,7 @@ export const ReorderPatientsResponseItem = zod.object({
     .describe("Position in consultation order. 1 = next to be seen."),
   caseOwner: zod
     .string()
+    .nullish()
     .describe("Veterinarian or staff member responsible for this case"),
   arrivedAt: zod.coerce.date(),
   seenAt: zod.coerce.date().nullable(),
@@ -404,10 +447,15 @@ export const ListSeenPatientsResponseItem = zod.object({
     ),
   presentingProblem: zod.string(),
   triageClass: zod
-    .enum(["red", "orange", "yellow", "green", "blue"])
-    .describe(
-      "Standard veterinary triage class.\nred = immediate \/ life-threatening,\norange = urgent (within 10-15 min),\nyellow = semi-urgent (within 1 hour),\ngreen = non-urgent,\nblue = routine \/ wellness\n",
-    ),
+    .union([
+      zod
+        .enum(["red", "orange", "yellow", "green", "blue"])
+        .describe(
+          "Standard veterinary triage class.\nred = immediate \/ life-threatening,\norange = urgent (within 10-15 min),\nyellow = semi-urgent (within 1 hour),\ngreen = non-urgent,\nblue = routine \/ wellness\n",
+        ),
+      zod.null(),
+    ])
+    .optional(),
   consultationOrder: zod
     .number()
     .min(1)
@@ -415,6 +463,7 @@ export const ListSeenPatientsResponseItem = zod.object({
     .describe("Position in consultation order. 1 = next to be seen."),
   caseOwner: zod
     .string()
+    .nullish()
     .describe("Veterinarian or staff member responsible for this case"),
   arrivedAt: zod.coerce.date(),
   seenAt: zod.coerce.date().nullable(),

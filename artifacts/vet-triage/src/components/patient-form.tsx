@@ -21,8 +21,8 @@ const formSchema = z.object({
   species: z.string().min(1, "Species is required"),
   age: z.string().min(1, "Age is required"),
   presentingProblem: z.string().min(1, "Presenting problem is required"),
-  triageClass: z.enum(["red", "orange", "yellow", "green", "blue"]),
-  caseOwner: z.string().min(1, "Case owner is required"),
+  triageClass: z.enum(["red", "orange", "yellow", "green", "blue"]).optional(),
+  caseOwner: z.string().optional(),
   consultationOrder: z
     .string()
     .optional()
@@ -40,8 +40,8 @@ export interface PatientFormSubmit {
   species: string;
   age: string;
   presentingProblem: string;
-  triageClass: TriageClass;
-  caseOwner: string;
+  triageClass?: TriageClass;
+  caseOwner?: string;
   consultationOrder?: number | null;
   notes?: string | null;
 }
@@ -52,8 +52,8 @@ interface PatientFormProps {
     species: string;
     age: string;
     presentingProblem: string;
-    triageClass: TriageClass;
-    caseOwner: string;
+    triageClass: TriageClass | null;
+    caseOwner: string | null;
     consultationOrder: number | null;
     notes: string | null;
   }>;
@@ -69,7 +69,7 @@ export function PatientForm({ initialValues, onSubmit, isSubmitting }: PatientFo
       species: initialValues?.species || "Dog",
       age: initialValues?.age || "",
       presentingProblem: initialValues?.presentingProblem || "",
-      triageClass: (initialValues?.triageClass as TriageClass) || "green",
+      triageClass: (initialValues?.triageClass as TriageClass) || undefined,
       caseOwner: initialValues?.caseOwner || "",
       consultationOrder: initialValues?.consultationOrder != null ? String(initialValues.consultationOrder) : "",
       notes: initialValues?.notes ?? "",
@@ -86,7 +86,7 @@ export function PatientForm({ initialValues, onSubmit, isSubmitting }: PatientFo
             age: values.age,
             presentingProblem: values.presentingProblem,
             triageClass: values.triageClass,
-            caseOwner: values.caseOwner,
+            caseOwner: values.caseOwner || undefined,
             consultationOrder: values.consultationOrder
               ? parseInt(values.consultationOrder, 10)
               : null,
@@ -156,7 +156,7 @@ export function PatientForm({ initialValues, onSubmit, isSubmitting }: PatientFo
             name="caseOwner"
             render={({ field }) => (
               <FormItem>
-                <FormLabel>Case Owner (Vet/Tech)</FormLabel>
+                <FormLabel>Case Owner (Optional)</FormLabel>
                 <FormControl>
                   <Input placeholder="e.g. Dr. Smith" {...field} />
                 </FormControl>
@@ -171,11 +171,11 @@ export function PatientForm({ initialValues, onSubmit, isSubmitting }: PatientFo
           name="triageClass"
           render={({ field }) => (
             <FormItem>
-              <FormLabel>Triage Class</FormLabel>
-              <Select onValueChange={field.onChange} defaultValue={field.value}>
+              <FormLabel>Triage Class (Optional)</FormLabel>
+              <Select onValueChange={field.onChange} value={field.value ?? ""}>
                 <FormControl>
                   <SelectTrigger>
-                    <SelectValue placeholder="Select priority" />
+                    <SelectValue placeholder="Select priority (optional)" />
                   </SelectTrigger>
                 </FormControl>
                 <SelectContent>

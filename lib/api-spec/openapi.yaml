@@ -363,7 +363,9 @@ components:
         presentingProblem:
           type: string
         triageClass:
-          $ref: "#/components/schemas/TriageClass"
+          anyOf:
+            - $ref: "#/components/schemas/TriageClass"
+            - type: "null"
         consultationOrder:
           type: integer
           nullable: true
@@ -371,6 +373,7 @@ components:
           description: Position in consultation order. 1 = next to be seen.
         caseOwner:
           type: string
+          nullable: true
           description: Veterinarian or staff member responsible for this case
         arrivedAt:
           type: string
@@ -402,9 +405,7 @@ components:
         - age
         - species
         - presentingProblem
-        - triageClass
         - consultationOrder
-        - caseOwner
         - arrivedAt
         - seenAt
         - removedAt
@@ -441,8 +442,6 @@ components:
         - age
         - species
         - presentingProblem
-        - triageClass
-        - caseOwner
     ReorderPatientsInput:
       type: object
       properties:

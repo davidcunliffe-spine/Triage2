@@ -15,9 +15,9 @@ export interface CreatePatientInput {
   species: Species;
   /** @minLength 1 */
   presentingProblem: string;
-  triageClass: TriageClass;
+  triageClass?: TriageClass;
   /** @minimum 1 */
   consultationOrder?: number | null;
-  caseOwner: string;
+  caseOwner?: string;
   notes?: string | null;
 }
