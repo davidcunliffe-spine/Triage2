@@ -1,3 +1,5 @@
+import path from "node:path";
+import fs from "node:fs";
 import express, { type Express } from "express";
 import cors from "cors";
 import pinoHttp from "pino-http";
@@ -69,5 +71,25 @@ app.use(
 );
 
 app.use("/api", router);
+
+// In production deployments (e.g. fly.io), the API server also serves the
+// built frontend so that everything lives on a single origin (no CORS, and
+// Clerk Frontend API proxying via /api/__clerk works against same-origin).
+const staticDir = process.env["STATIC_DIR"];
+if (staticDir) {
+  const resolved = path.resolve(staticDir);
+  if (fs.existsSync(resolved)) {
+    const indexHtml = path.join(resolved, "index.html");
+    app.use(express.static(resolved, { index: false, maxAge: "1h" }));
+    // SPA fallback: anything that isn't /api/* falls through to index.html
+    app.get(/^\/(?!api(?:\/|$)).*/, (_req, res, next) => {
+      if (!fs.existsSync(indexHtml)) return next();
+      res.sendFile(indexHtml);
+    });
+    logger.info({ staticDir: resolved }, "Serving static frontend");
+  } else {
+    logger.warn({ staticDir: resolved }, "STATIC_DIR does not exist");
+  }
+}
 
 export default app;

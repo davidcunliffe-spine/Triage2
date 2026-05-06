@@ -32,6 +32,15 @@ See the `pnpm-workspace` skill for workspace structure, TypeScript setup, and pa
 - **`@workspace/vet-triage`** — React + Vite staff/client UI for "CARE Triage" (carevet.com.au veterinary clinic).
 - **`@workspace/mockup-sandbox`** — design preview server for canvas iframes.
 
+## Fly.io deployment (via GitHub)
+
+- Single Fly app — the API server serves both `/api/*` and the built Vite frontend (SPA fallback). This keeps everything same-origin so Clerk Frontend API proxying at `/api/__clerk` works without CORS.
+- Files: `Dockerfile` (multi-stage build of api-server + vet-triage), `fly.toml` (app `care-triage`, region `syd`, internal port `8080`, healthcheck `/api/healthz`), `.dockerignore`, `.github/workflows/fly-deploy.yml`.
+- Frontend static serving in api-server is gated by the `STATIC_DIR` env var (set to `/app/public` in the container). It mounts after `/api/*` so API routes always win, with an SPA fallback to `index.html`.
+- Required Fly secrets: `DATABASE_URL`, `CLERK_PUBLISHABLE_KEY`, `CLERK_SECRET_KEY`. Set with `fly secrets set …`.
+- Required GitHub repo secrets: `FLY_API_TOKEN` (from `fly tokens create deploy`), `VITE_CLERK_PUBLISHABLE_KEY` (baked into the frontend bundle at build time). Optional repo variable `VITE_CLERK_PROXY_URL` (defaults to `/api/__clerk`).
+- Workflow triggers on push to `main` or manual dispatch and runs `flyctl deploy --remote-only` with the Vite build args.
+
 ## CARE Triage product notes
 
 - **Branding**: secondary CARE brandmark at `artifacts/vet-triage/public/brand/care-logo.png`. Palette tokens: Kelly Green `#2AB573`, Charcoal `#333234`, Tangerine `#F25928`, Pistachio `#C4F7CE`. No emojis.

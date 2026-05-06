@@ -1,0 +1,47 @@
+# fly.toml — CARE Triage (single-app deployment)
+#
+# Edit `app` to match your Fly application name (run `fly apps create care-triage`
+# or whatever you prefer, then update this value).
+#
+# Required secrets (set with `fly secrets set KEY=value`):
+#   DATABASE_URL            Postgres connection string (e.g. fly postgres or Neon)
+#   CLERK_PUBLISHABLE_KEY   Clerk publishable key (server side)
+#   CLERK_SECRET_KEY        Clerk secret key
+#
+# Required GitHub Actions repo secrets (for CI deploy):
+#   FLY_API_TOKEN                  fly auth token (`fly tokens create deploy`)
+#   VITE_CLERK_PUBLISHABLE_KEY     Clerk publishable key (baked into frontend)
+#
+# Optional GitHub Actions repo variables:
+#   VITE_CLERK_PROXY_URL    Defaults to "/api/__clerk" (same-origin proxy)
+
+app = "care-triage"
+primary_region = "syd"
+
+[build]
+  dockerfile = "Dockerfile"
+
+[env]
+  NODE_ENV = "production"
+  PORT = "8080"
+  STATIC_DIR = "/app/public"
+
+[http_service]
+  internal_port = 8080
+  force_https = true
+  auto_stop_machines = "stop"
+  auto_start_machines = true
+  min_machines_running = 1
+  processes = ["app"]
+
+  [[http_service.checks]]
+    interval = "30s"
+    timeout = "5s"
+    grace_period = "10s"
+    method = "GET"
+    path = "/api/healthz"
+
+[[vm]]
+  size = "shared-cpu-1x"
+  memory = "512mb"
+  cpus = 1
